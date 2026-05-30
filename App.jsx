@@ -1,14 +1,11 @@
 // src/App.jsx
 import React, { useState, useEffect } from 'react';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
-
-// Gọi trực tiếp cấu hình từ file firebase.js anh vừa tạo ở trên
 import { db, auth, appId } from './firebase'; 
 
 export default function App() {
   // Giao diện tự động nhận dữ liệu đám mây và hoạt động bình thường
-}
-// Khởi tạo dữ liệu mặc định ban đầu
+} // <--- KHÓA HÀM Ở ĐÂY BỊ SAI!
 const INITIAL_PROFILE = {
   name: "Anh Đức",
   age: 26,
