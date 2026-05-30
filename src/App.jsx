@@ -1,11 +1,12 @@
-// src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+
+// Gọi trực tiếp cấu hình từ file firebase.js nằm cùng thư mục src
 import { db, auth, appId } from './firebase'; 
 
-export default function App() {
-  // Giao diện tự động nhận dữ liệu đám mây và hoạt động bình thường
-} // <--- KHÓA HÀM Ở ĐÂY BỊ SAI!
+// Khởi tạo dữ liệu mặc định ban đầu
 const INITIAL_PROFILE = {
   name: "Anh Đức",
   age: 26,
