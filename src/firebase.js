@@ -1,8 +1,8 @@
 // src/firebase.js
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-
+ 
 const firebaseConfig = {
   apiKey: "AIzaSyAz-CDKpOSsIPdiyjB8Ewt2R1obmTg1tuk",
   authDomain: "gym-app-tracking.firebaseapp.com",
@@ -12,11 +12,11 @@ const firebaseConfig = {
   appId: "1:21201987935:web:0fa3380fee5ec5beaa2eea",
   measurementId: "G-6X1SPJPK5E"
 };
-
-// Khởi tạo các dịch vụ
+ 
 const app = initializeApp(firebaseConfig);
-
-// Xuất bản (export) ra ngoài để file App.jsx có thể gọi sử dụng
+ 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const googleProvider = new GoogleAuthProvider();
 export const appId = 'gym-app-tracking';
+ 
