@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { db, auth, googleProvider } from './firebase';
 
@@ -322,6 +322,11 @@ export default function App() {
   // AUTH: Lắng nghe trạng thái đăng nhập
   // ============================================================
   useEffect(() => {
+    // Xử lý kết quả sau khi redirect về từ Google
+    getRedirectResult(auth).catch((err) => {
+      console.error('Lỗi redirect result:', err);
+    });
+
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
@@ -462,7 +467,18 @@ export default function App() {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
-      console.error('Lỗi đăng nhập Google:', err);
+      console.error('Popup lỗi, chuyển sang redirect:', err.code);
+      // Nếu popup bị chặn (COOP, popup blocker...) → dùng redirect
+      if (
+        err.code === 'auth/popup-blocked' ||
+        err.code === 'auth/popup-closed-by-user' ||
+        err.code === 'auth/cancelled-popup-request' ||
+        err.code === 'auth/internal-error'
+      ) {
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        console.error('Lỗi đăng nhập Google:', err);
+      }
     }
   };
 
