@@ -191,6 +191,56 @@ const DEFAULT_CLIENT_DATA = {
 };
 
 // ============================================================
+// ACCESS CODE GENERATOR
+// Nguyễn Sỹ Đức → DucNS, nếu trùng → DucNS2, DucNS3, ...
+// ============================================================
+
+// Bảng chuyển ký tự tiếng Việt có dấu → không dấu
+const VI_MAP = {
+  à:'a',á:'a',â:'a',ã:'a',ä:'a',å:'a',ă:'a',ắ:'a',ặ:'a',ằ:'a',ẳ:'a',ẵ:'a',ấ:'a',ầ:'a',ẩ:'a',ẫ:'a',ậ:'a',
+  è:'e',é:'e',ê:'e',ế:'e',ề:'e',ể:'e',ễ:'e',ệ:'e',
+  ì:'i',í:'i',ỉ:'i',ĩ:'i',ị:'i',
+  ò:'o',ó:'o',ô:'o',ố:'o',ồ:'o',ổ:'o',ỗ:'o',ộ:'o',ơ:'o',ớ:'o',ờ:'o',ở:'o',ỡ:'o',ợ:'o',
+  ù:'u',ú:'u',ư:'u',ứ:'u',ừ:'u',ử:'u',ữ:'u',ự:'u',ủ:'u',ũ:'u',ụ:'u',
+  ỳ:'y',ý:'y',ỷ:'y',ỹ:'y',ỵ:'y',
+  đ:'d',
+  À:'A',Á:'A',Â:'A',Ã:'A',Ä:'A',Å:'A',Ă:'A',Ắ:'A',Ặ:'A',Ằ:'A',Ẳ:'A',Ẵ:'A',Ấ:'A',Ầ:'A',Ẩ:'A',Ẫ:'A',Ậ:'A',
+  È:'E',É:'E',Ê:'E',Ế:'E',Ề:'E',Ể:'E',Ễ:'E',Ệ:'E',
+  Ì:'I',Í:'I',Ỉ:'I',Ĩ:'I',Ị:'I',
+  Ò:'O',Ó:'O',Ô:'O',Ố:'O',Ồ:'O',Ổ:'O',Ỗ:'O',Ộ:'O',Ơ:'O',Ớ:'O',Ờ:'O',Ở:'O',Ỡ:'O',Ợ:'O',
+  Ù:'U',Ú:'U',Ư:'U',Ứ:'U',Ừ:'U',Ử:'U',Ữ:'U',Ự:'U',Ủ:'U',Ũ:'U',Ụ:'U',
+  Ỳ:'Y',Ý:'Y',Ỷ:'Y',Ỹ:'Y',Ỵ:'Y',
+  Đ:'D',
+};
+
+const removeAccents = (str) =>
+  str.split('').map(c => VI_MAP[c] || c).join('');
+
+// "Nguyễn Sỹ Đức" → "DucNS"
+const buildBaseCode = (fullName) => {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'client';
+  // Tên riêng (phần cuối) viết hoa chữ đầu
+  const lastName = removeAccents(parts[parts.length - 1]);
+  const lastCapitalized = lastName.charAt(0).toUpperCase() + lastName.slice(1).toLowerCase();
+  // Các chữ cái đầu của phần còn lại (họ + đệm), viết hoa
+  const initials = parts
+    .slice(0, parts.length - 1)
+    .map(p => removeAccents(p).charAt(0).toUpperCase())
+    .join('');
+  return lastCapitalized + initials;
+};
+
+// Kiểm tra trùng và thêm số nếu cần
+const generateUniqueCode = async (fullName, existingIds = []) => {
+  const base = buildBaseCode(fullName);
+  if (!existingIds.includes(base.toLowerCase())) return base;
+  let n = 2;
+  while (existingIds.includes((base + n).toLowerCase())) n++;
+  return base + n;
+};
+
+// ============================================================
 // FIRESTORE HELPERS
 // ============================================================
 
@@ -220,6 +270,11 @@ const loadPTClients = async (uid) => {
   return null;
 };
 
+// Cập nhật assignedClients của PT
+const updatePTClients = async (uid, clients) => {
+  await setDoc(doc(db, 'users', uid), { role: 'pt', assignedClients: clients }, { merge: true });
+};
+
 // ============================================================
 // COMPONENT CHÍNH
 // ============================================================
@@ -246,6 +301,13 @@ export default function App() {
   // UI state
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditing, setIsEditing] = useState(false);
+
+  // Modal tạo client mới
+  const [showNewClientModal, setShowNewClientModal] = useState(false);
+  const [newClientForm, setNewClientForm] = useState({ name: '', age: '', gender: 'Nam', height: '', weight: '', targetWeight: '' });
+  const [newClientCode, setNewClientCode] = useState(''); // code vừa được tạo để hiển thị
+  const [creatingClient, setCreatingClient] = useState(false);
+  const [newClientError, setNewClientError] = useState('');
 
   // Local editable copies
   const [profile, setProfile] = useState(INITIAL_PROFILE);
@@ -415,6 +477,69 @@ export default function App() {
   };
 
   // ============================================================
+  // TẠO CLIENT MỚI
+  // ============================================================
+  const handleCreateClient = async () => {
+    if (!newClientForm.name.trim()) {
+      setNewClientError('Vui lòng nhập tên học viên.');
+      return;
+    }
+    setCreatingClient(true);
+    setNewClientError('');
+    try {
+      // Lấy danh sách ID hiện có để tránh trùng
+      const existingIds = ptClients.map(c => c.id.toLowerCase());
+      const code = await generateUniqueCode(newClientForm.name, existingIds);
+
+      // Tính BMR nếu có đủ thông tin
+      const w = parseFloat(newClientForm.weight) || 70;
+      const h = parseFloat(newClientForm.height) || 170;
+      const age = parseFloat(newClientForm.age) || 25;
+      const bmr = Math.round(66.5 + 13.75 * w + 5.003 * h - 6.755 * age);
+      const tdee = Math.round(bmr * 1.3);
+
+      const newProfile = {
+        name: newClientForm.name.trim(),
+        age,
+        gender: newClientForm.gender,
+        height: h,
+        weight: w,
+        targetWeight: parseFloat(newClientForm.targetWeight) || w - 5,
+        bmr,
+        tdee,
+        activeFactor: 1.3,
+      };
+
+      // Tạo document roadmap cho client với dữ liệu mặc định
+      const clientInitData = {
+        ...DEFAULT_CLIENT_DATA,
+        profile: newProfile,
+      };
+      await saveClientData(code, clientInitData);
+
+      // Cập nhật assignedClients của PT
+      const updatedClients = [...ptClients, { id: code, name: newClientForm.name.trim() }];
+      await updatePTClients(user.uid, updatedClients);
+      setPtClients(updatedClients);
+
+      // Hiển thị code để PT copy
+      setNewClientCode(code);
+      setNewClientForm({ name: '', age: '', gender: 'Nam', height: '', weight: '', targetWeight: '' });
+    } catch (err) {
+      console.error('Lỗi tạo client:', err);
+      setNewClientError('Có lỗi xảy ra. Thử lại sau.');
+    }
+    setCreatingClient(false);
+  };
+
+  const handleCloseNewClientModal = () => {
+    setShowNewClientModal(false);
+    setNewClientCode('');
+    setNewClientForm({ name: '', age: '', gender: 'Nam', height: '', weight: '', targetWeight: '' });
+    setNewClientError('');
+  };
+
+  // ============================================================
   // EDIT HELPERS
   // ============================================================
   const calculateBMI = (w, h) => {
@@ -575,25 +700,148 @@ export default function App() {
   // ============================================================
   // RENDER: PT chưa có client nào
   // ============================================================
-  if (userRole === 'pt' && ptClients.length === 0) {
+  if (userRole === 'pt' && ptClients.length === 0 && !showNewClientModal) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
           <div className="text-4xl mb-4">📋</div>
           <h2 className="text-lg font-bold text-slate-800">Chưa có học viên nào</h2>
-          <p className="text-slate-500 text-sm mt-2">
-            Liên hệ admin để được assign học viên vào tài khoản của bạn.
-          </p>
-          <p className="text-slate-400 text-xs mt-3 font-mono bg-slate-100 px-3 py-1.5 rounded-lg">
-            UID: {user?.uid}
-          </p>
-          <button onClick={handleSignOut} className="mt-4 text-sm text-slate-500 underline">
+          <p className="text-slate-500 text-sm mt-2">Tạo học viên đầu tiên để bắt đầu.</p>
+          <button
+            onClick={() => setShowNewClientModal(true)}
+            className="mt-5 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition-all"
+          >
+            + Tạo học viên đầu tiên
+          </button>
+          <button onClick={handleSignOut} className="mt-4 block mx-auto text-sm text-slate-400 underline">
             Đăng xuất
           </button>
         </div>
+        {showNewClientModal && renderNewClientModal()}
       </div>
     );
   }
+
+  // ============================================================
+  // RENDER: Modal tạo client mới
+  // ============================================================
+  const renderNewClientModal = () => (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="text-base font-bold text-slate-800">Thêm Học Viên Mới</h2>
+          <button onClick={handleCloseNewClientModal} className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 text-sm font-bold transition-all">✕</button>
+        </div>
+
+        {/* Nếu đã tạo xong → hiển thị mã truy cập */}
+        {newClientCode ? (
+          <div className="px-6 py-6 text-center">
+            <div className="text-3xl mb-3">🎉</div>
+            <h3 className="font-bold text-slate-800 text-base mb-1">Tạo thành công!</h3>
+            <p className="text-slate-500 text-sm mb-4">Gửi mã này cho học viên để họ truy cập lộ trình:</p>
+            <div className="bg-slate-900 text-white font-mono text-xl font-black px-6 py-3 rounded-xl inline-block tracking-wider mb-4">
+              {newClientCode}
+            </div>
+            <p className="text-slate-400 text-xs mb-6">Học viên mở app → chọn "Học Viên" → nhập mã này</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigator.clipboard.writeText(newClientCode)}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition-all"
+              >
+                📋 Copy mã
+              </button>
+              <button
+                onClick={() => {
+                  handleCloseNewClientModal();
+                  // Chuyển sang client vừa tạo
+                  const justCreated = ptClients[ptClients.length - 1];
+                  if (justCreated) setSelectedClientId(justCreated.id);
+                }}
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-sm transition-all"
+              >
+                Xem lộ trình →
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="px-6 py-5 space-y-4">
+            {/* Tên */}
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Tên học viên <span className="text-rose-500">*</span></label>
+              <input
+                type="text"
+                placeholder="VD: Nguyễn Sỹ Đức"
+                value={newClientForm.name}
+                onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+              />
+              {newClientForm.name.trim() && (
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Mã dự kiến: <span className="font-mono font-bold text-blue-600">{buildBaseCode(newClientForm.name)}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Tuổi</label>
+                <input type="number" placeholder="25" value={newClientForm.age}
+                  onChange={(e) => setNewClientForm({ ...newClientForm, age: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Giới tính</label>
+                <select value={newClientForm.gender}
+                  onChange={(e) => setNewClientForm({ ...newClientForm, gender: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 bg-white">
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Cao (cm)</label>
+                <input type="number" placeholder="170" value={newClientForm.height}
+                  onChange={(e) => setNewClientForm({ ...newClientForm, height: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Nặng (kg)</label>
+                <input type="number" placeholder="70" value={newClientForm.weight}
+                  onChange={(e) => setNewClientForm({ ...newClientForm, weight: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Mục tiêu (kg)</label>
+                <input type="number" placeholder="65" value={newClientForm.targetWeight}
+                  onChange={(e) => setNewClientForm({ ...newClientForm, targetWeight: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500" />
+              </div>
+            </div>
+
+            {newClientError && (
+              <p className="text-rose-500 text-xs">{newClientError}</p>
+            )}
+
+            <button
+              onClick={handleCreateClient}
+              disabled={creatingClient}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+            >
+              {creatingClient ? (
+                <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang tạo...</>
+              ) : (
+                '✓ Tạo học viên'
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   // ============================================================
   // RENDER: App chính
@@ -635,6 +883,16 @@ export default function App() {
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
+            )}
+
+            {/* PT: Nút thêm học viên mới */}
+            {userRole === 'pt' && (
+              <button
+                onClick={() => setShowNewClientModal(true)}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-[11px] font-bold flex items-center gap-1 transition-all"
+              >
+                <span className="text-base leading-none">+</span> Thêm học viên
+              </button>
             )}
 
             {/* PT: Nút chỉnh sửa / lưu */}
@@ -1102,6 +1360,10 @@ export default function App() {
         )}
 
       </main>
+
+      {/* Modal tạo client mới */}
+      {showNewClientModal && renderNewClientModal()}
+
     </div>
   );
 }
