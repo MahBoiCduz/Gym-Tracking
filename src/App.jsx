@@ -496,10 +496,20 @@ export default function App() {
   // ============================================================
   const handleGoogleSignIn = async () => {
     try {
-      logInfo('Bắt đầu đăng nhập Google (redirect)...');
-      await signInWithRedirect(auth, googleProvider);
+      logInfo('Bắt đầu đăng nhập Google (popup)...');
+      const result = await signInWithPopup(auth, googleProvider);
+      logSuccess('Popup login thành công', { uid: result.user.uid, email: result.user.email });
     } catch (err) {
-      logError('Lỗi đăng nhập Google', { code: err.code, message: err.message });
+      logError('Lỗi đăng nhập Google (popup)', { code: err.code, message: err.message });
+      // Nếu popup thực sự bị chặn → thử redirect
+      if (err.code === 'auth/popup-blocked') {
+        logWarn('Popup bị chặn, chuyển sang redirect');
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (e2) {
+          logError('Redirect cũng lỗi', { code: e2.code, message: e2.message });
+        }
+      }
     }
   };
 
