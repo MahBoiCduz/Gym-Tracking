@@ -189,7 +189,54 @@ const DEFAULT_CLIENT_DATA = {
   solutions: INITIAL_SOLUTIONS,
   phases: INITIAL_PHASES,
   diet: INITIAL_DIET,
-  completedSessions: {}
+  completedSessions: {},
+  nutritionTargets: { kcal: 1700, p: 130, c: 150, f: 50 },
+  nutritionLog: {}
+};
+
+// Link Google Sheet (publish CSV) chứa thư viện món ăn
+const FOODS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRxbtEfs3waw0ihSqeZhcgLDtgaFeorx662dErOyQ4bZBRMypbQe8ir81-7BJ47fmHCyhnUO4fb2UAz/pub?output=csv';
+
+// Parser CSV đơn giản, xử lý được ô có dấu phẩy trong ngoặc kép
+const parseCSV = (text) => {
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else field += ch;
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { row.push(field); field = ''; }
+      else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (ch === '\r') { /* skip */ }
+      else field += ch;
+    }
+  }
+  if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+  return rows;
+};
+
+// Chuyển CSV thành danh sách món
+// Header thực tế: Danh mục | Món ăn / Thành phần | Calorie | Protein | Fat | Carb
+const parseFoodsFromCSV = (text) => {
+  const rows = parseCSV(text).filter(r => r.some(c => c && c.trim() !== ''));
+  if (rows.length < 2) return [];
+  const num = (v) => {
+    const n = parseFloat(String(v || '').replace(',', '.').replace(/[^\d.-]/g, ''));
+    return isNaN(n) ? 0 : n;
+  };
+  return rows.slice(1).map((r, i) => ({
+    id: `f${i}`,
+    cat: (r[0] || 'Khác').trim(),
+    name: (r[1] || '').trim(),
+    kcal: num(r[2]),
+    p: num(r[3]),
+    f: num(r[4]),
+    c: num(r[5]),
+  })).filter(f => f.name);
 };
 
 // ============================================================
@@ -286,6 +333,15 @@ export default function App() {
     typeof window !== 'undefined' &&
     (window.location.pathname === '/debug' || window.location.search.includes('debug=1'));
 
+  // Phát hiện in-app browser (Zalo, Messenger, Facebook, Instagram...)
+  // vì các trình duyệt này chặn đăng nhập Google
+  const detectInAppBrowser = () => {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    return /Zalo|FBAN|FBAV|FB_IAB|Instagram|Line|MicroMessenger|TikTok/i.test(ua);
+  };
+  const isInAppBrowser = detectInAppBrowser();
+
   // Auth state
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null); // 'pt' | 'client' | null
@@ -324,6 +380,15 @@ export default function App() {
   const [phases, setPhases] = useState(INITIAL_PHASES);
   const [diet, setDiet] = useState(INITIAL_DIET);
   const [completedSessions, setCompletedSessions] = useState({});
+
+  // Nutrition state
+  const [nutritionTargets, setNutritionTargets] = useState({ kcal: 1700, p: 130, c: 150, f: 50 });
+  const [nutritionLog, setNutritionLog] = useState({}); // { "2026-06-07": [ {name,kcal,p,c,f} ] }
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [foods, setFoods] = useState([]); // thư viện món từ Google Sheet
+  const [foodsLoading, setFoodsLoading] = useState(false);
+  const [foodSearch, setFoodSearch] = useState('');
+  const [foodCat, setFoodCat] = useState('all');
 
   // ============================================================
   // AUTH: Lắng nghe trạng thái đăng nhập
@@ -381,6 +446,30 @@ export default function App() {
   }, []);
 
   // ============================================================
+  // Load thư viện món ăn từ Google Sheet (1 lần khi app mở)
+  // ============================================================
+  useEffect(() => {
+    const loadFoods = async () => {
+      setFoodsLoading(true);
+      try {
+        const res = await fetch(FOODS_CSV_URL);
+        const text = await res.text();
+        const parsed = parseFoodsFromCSV(text);
+        if (parsed.length > 0) {
+          setFoods(parsed);
+          logSuccess('Đã tải thư viện món ăn', { count: parsed.length });
+        } else {
+          logWarn('Thư viện món ăn rỗng hoặc sai định dạng');
+        }
+      } catch (err) {
+        logError('Lỗi tải thư viện món ăn từ Sheet', { message: err.message });
+      }
+      setFoodsLoading(false);
+    };
+    loadFoods();
+  }, []);
+
+  // ============================================================
   // Load dữ liệu khi PT chọn client
   // ============================================================
   useEffect(() => {
@@ -423,6 +512,8 @@ export default function App() {
     if (data.phases) setPhases(data.phases);
     if (data.diet) setDiet(data.diet);
     if (data.completedSessions) setCompletedSessions(data.completedSessions);
+    if (data.nutritionTargets) setNutritionTargets(data.nutritionTargets);
+    setNutritionLog(data.nutritionLog || {});
     setClientData(data);
   };
 
@@ -435,7 +526,7 @@ export default function App() {
     setIsEditing(false);
     setSaveStatus('saving');
     try {
-      await saveClientData(clientId, { profile, goals, issues, solutions, phases, diet, completedSessions });
+      await saveClientData(clientId, { profile, goals, issues, solutions, phases, diet, completedSessions, nutritionTargets });
       logSuccess('Lưu lộ trình lên Cloud thành công', { clientId });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 3000);
@@ -443,6 +534,29 @@ export default function App() {
       logError('Lỗi lưu lộ trình', { clientId, code: err.code, message: err.message });
       setSaveStatus('error');
     }
+  };
+
+  // ============================================================
+  // NUTRITION: Thêm / xóa món trong nhật ký theo ngày
+  // ============================================================
+  const addFoodToLog = async (food) => {
+    const clientId = userRole === 'pt' ? selectedClientId : clientAccessCode;
+    if (!clientId) return;
+    const dayList = nutritionLog[selectedDate] || [];
+    const entry = { name: food.name, kcal: food.kcal, p: food.p, c: food.c, f: food.f };
+    const newLog = { ...nutritionLog, [selectedDate]: [...dayList, entry] };
+    setNutritionLog(newLog);
+    await saveClientData(clientId, { nutritionLog: newLog });
+  };
+
+  const removeFoodFromLog = async (idx) => {
+    const clientId = userRole === 'pt' ? selectedClientId : clientAccessCode;
+    if (!clientId) return;
+    const dayList = [...(nutritionLog[selectedDate] || [])];
+    dayList.splice(idx, 1);
+    const newLog = { ...nutritionLog, [selectedDate]: dayList };
+    setNutritionLog(newLog);
+    await saveClientData(clientId, { nutritionLog: newLog });
   };
 
   // ============================================================
@@ -454,18 +568,6 @@ export default function App() {
     const newCompleted = { ...completedSessions, [uniqueId]: !completedSessions[uniqueId] };
     setCompletedSessions(newCompleted);
     await saveClientData(clientId, { completedSessions: newCompleted });
-  };
-
-  // ============================================================
-  // CLIENT: Tích hoàn thành bữa ăn
-  // ============================================================
-  const handleDietDoneToggle = async (dayIdx) => {
-    const clientId = userRole === 'pt' ? selectedClientId : clientAccessCode;
-    if (!clientId) return;
-    const newDiet = [...diet];
-    newDiet[dayIdx].done = !newDiet[dayIdx].done;
-    setDiet(newDiet);
-    await saveClientData(clientId, { diet: newDiet });
   };
 
   // ============================================================
@@ -616,20 +718,18 @@ export default function App() {
     setter(newList);
   };
 
-  const handleDietMealChange = (dayIdx, mealKey, newVal) => {
-    const newDiet = [...diet];
-    newDiet[dayIdx][mealKey] = newVal;
-    setDiet(newDiet);
-  };
-
   // ============================================================
   // STATS
   // ============================================================
   const completedWorkoutsCount = Object.values(completedSessions).filter(Boolean).length;
   const totalWorkoutsCount = phases.reduce((acc, p) => acc + p.blocks.reduce((bAcc, b) => bAcc + b.exercises.length, 0), 0);
   const workoutProgressPercentage = totalWorkoutsCount ? Math.round((completedWorkoutsCount / totalWorkoutsCount) * 100) : 0;
-  const completedMealsCount = diet.filter(d => d.done).length;
-  const mealProgressPercentage = Math.round((completedMealsCount / diet.length) * 100);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayNutrition = (nutritionLog[todayKey] || []).reduce((a, e) => ({
+    kcal: a.kcal + (e.kcal || 0), p: a.p + (e.p || 0),
+  }), { kcal: 0, p: 0 });
+  const mealProgressPercentage = nutritionTargets.kcal > 0
+    ? Math.min(100, Math.round((todayNutrition.kcal / nutritionTargets.kcal) * 100)) : 0;
 
   const currentClientName = userRole === 'pt'
     ? (ptClients.find(c => c.id === selectedClientId)?.name || selectedClientId)
@@ -691,18 +791,41 @@ export default function App() {
                 Huấn Luyện Viên
               </h2>
               <p className="text-slate-400 text-xs mb-4">Đăng nhập bằng tài khoản Google được phân quyền</p>
-              <button
-                onClick={handleGoogleSignIn}
-                className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-800 font-semibold py-2.5 rounded-xl text-sm transition-all"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Đăng nhập với Google
-              </button>
+
+              {isInAppBrowser ? (
+                <div className="bg-amber-950/40 border border-amber-700 rounded-xl p-4">
+                  <p className="text-amber-300 text-xs font-bold mb-2">⚠️ Không đăng nhập được trong Zalo/Messenger</p>
+                  <p className="text-amber-200/80 text-[11px] leading-relaxed mb-3">
+                    Google chặn đăng nhập từ trình duyệt trong ứng dụng. Vui lòng mở bằng <strong>Safari</strong> hoặc <strong>Chrome</strong>:
+                  </p>
+                  <ol className="text-amber-200/80 text-[11px] leading-relaxed space-y-1 list-decimal list-inside mb-3">
+                    <li>Bấm nút <strong>•••</strong> hoặc biểu tượng chia sẻ ở góc màn hình</li>
+                    <li>Chọn <strong>"Mở trong Safari"</strong> / <strong>"Mở trong trình duyệt"</strong></li>
+                    <li>Đăng nhập Google lại ở đó</li>
+                  </ol>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(window.location.href);
+                    }}
+                    className="w-full bg-amber-700 hover:bg-amber-600 text-white font-semibold py-2 rounded-lg text-xs transition-all"
+                  >
+                    📋 Copy link để dán vào trình duyệt
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleGoogleSignIn}
+                  className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-800 font-semibold py-2.5 rounded-xl text-sm transition-all"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                  Đăng nhập với Google
+                </button>
+              )}
             </div>
 
             {/* Client Access */}
@@ -1037,12 +1160,12 @@ export default function App() {
             </div>
 
             <div className="bg-white/5 backdrop-blur-md rounded-xl p-3 flex-1 md:flex-none md:w-40 border border-white/10">
-              <div className="text-[10px] text-slate-300 font-medium">Kỷ luật Ăn uống</div>
+              <div className="text-[10px] text-slate-300 font-medium">Calo hôm nay</div>
               <div className="text-xl font-black text-emerald-400 mt-0.5">{mealProgressPercentage}%</div>
               <div className="w-full bg-white/20 h-1.5 rounded-full mt-1.5 overflow-hidden">
                 <div className="bg-emerald-400 h-full transition-all duration-500" style={{ width: `${mealProgressPercentage}%` }} />
               </div>
-              <div className="text-[9px] text-slate-400 mt-1">{completedMealsCount}/{diet.length} ngày</div>
+              <div className="text-[9px] text-slate-400 mt-1">{Math.round(todayNutrition.kcal)}/{nutritionTargets.kcal} kcal</div>
             </div>
           </div>
         </div>
@@ -1056,7 +1179,7 @@ export default function App() {
           {[
             { id: 'overview', label: '📊 Thể Trạng & Chỉ Số' },
             { id: 'workouts', label: '🥊 Lộ Trình Tập Luyện' },
-            { id: 'diet', label: '🥗 Thực Đơn Dinh Dưỡng' },
+            { id: 'nutrition', label: '🍽️ Nhật Ký Ăn Uống' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -1358,64 +1481,165 @@ export default function App() {
         )}
 
         {/* ======================================================
-            TAB 3: THỰC ĐƠN
+            TAB 3: NHẬT KÝ ĂN UỐNG
         ====================================================== */}
-        {activeTab === 'diet' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-            {diet.map((item, dIdx) => (
-              <div key={item.day} className={`bg-white rounded-xl border overflow-hidden shadow-sm flex flex-col transition-all ${
-                item.done ? 'border-emerald-400 ring-1 ring-emerald-400/20' : 'border-slate-200'
-              }`}>
-                <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => handleDietDoneToggle(dIdx)}>
-                      {item.done ? (
-                        <div className="w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center">
-                          <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                      ) : (
-                        <div className="w-4 h-4 bg-white border border-slate-300 hover:border-emerald-500 rounded-full" />
-                      )}
-                    </button>
-                    <span className="font-bold text-slate-800 text-xs">Ngày {item.day}</span>
+        {activeTab === 'nutrition' && (() => {
+          const todayLog = nutritionLog[selectedDate] || [];
+          const tot = todayLog.reduce((a, e) => ({
+            kcal: a.kcal + (e.kcal || 0), p: a.p + (e.p || 0), c: a.c + (e.c || 0), f: a.f + (e.f || 0),
+          }), { kcal: 0, p: 0, c: 0, f: 0 });
+          const cats = ['all', ...Array.from(new Set(foods.map(f => f.cat)))];
+          const q = foodSearch.trim().toLowerCase();
+          const filtered = foods.filter(f =>
+            (foodCat === 'all' || f.cat === foodCat) && (!q || f.name.toLowerCase().includes(q))
+          );
+          const pct = (v, t) => t > 0 ? Math.min(100, Math.round((v / t) * 100)) : 0;
+          const diffKcal = nutritionTargets.kcal - tot.kcal;
+          const metric = (label, val, target, color, unit) => (
+            <div className="bg-white rounded-xl border border-slate-200 p-3 text-center shadow-sm">
+              <div className="text-[10px] text-slate-500 font-medium">{label}</div>
+              <div className="text-lg font-black mt-0.5" style={{ color }}>{Math.round(val)}</div>
+              <div className="text-[9px] text-slate-400">/ {target}{unit}</div>
+              <div className="w-full bg-slate-100 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                <div className="h-full transition-all duration-500" style={{ width: `${pct(val, target)}%`, background: color }} />
+              </div>
+            </div>
+          );
+
+          return (
+            <div className="space-y-5">
+              {/* Chọn ngày */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">📅 Ngày:</span>
+                  <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
+                    className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
+                  {selectedDate === new Date().toISOString().slice(0, 10) && (
+                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Hôm nay</span>
+                  )}
+                </div>
+                {/* PT đặt target */}
+                {isEditing && userRole === 'pt' && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-bold text-amber-600">Mục tiêu/ngày:</span>
+                    {[['kcal', 'kcal'], ['p', 'P'], ['c', 'C'], ['f', 'F']].map(([k, lbl]) => (
+                      <div key={k} className="flex items-center gap-0.5">
+                        <input type="number" value={nutritionTargets[k]}
+                          onChange={(e) => setNutritionTargets({ ...nutritionTargets, [k]: parseFloat(e.target.value) || 0 })}
+                          className="w-14 text-xs border border-amber-300 rounded px-1 py-0.5 text-right focus:outline-none" />
+                        <span className="text-[9px] text-slate-500">{lbl}</span>
+                      </div>
+                    ))}
                   </div>
-                  {isEditing && userRole === 'pt' ? (
-                    <select value={item.type} onChange={(e) => { const n = [...diet]; n[dIdx].type = e.target.value; setDiet(n); }}
-                      className="text-[10px] bg-white border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none">
-                      <option value="Standard">Standard</option>
-                      <option value="Cheat">Xả Nhẹ</option>
-                      <option value="Half">Half-way</option>
-                    </select>
+                )}
+              </div>
+
+              {/* Metric cards */}
+              <div className="grid grid-cols-4 gap-3">
+                {metric('Calo', tot.kcal, nutritionTargets.kcal, '#378ADD', '')}
+                {metric('Đạm', tot.p, nutritionTargets.p, '#1D9E75', 'g')}
+                {metric('Carb', tot.c, nutritionTargets.c, '#EF9F27', 'g')}
+                {metric('Mỡ', tot.f, nutritionTargets.f, '#D85A30', 'g')}
+              </div>
+
+              {/* Dòng thiếu/thừa */}
+              <div className={`rounded-xl px-4 py-2.5 text-sm font-medium ${
+                diffKcal >= 0 ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
+              }`}>
+                {diffKcal >= 0
+                  ? `🔥 Còn có thể nạp ${Math.round(diffKcal)} kcal · thiếu ${Math.max(0, Math.round(nutritionTargets.p - tot.p))}g đạm`
+                  : `⚠️ Đã vượt ${Math.round(-diffKcal)} kcal so với mục tiêu`}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {/* Món đã ăn */}
+                <div>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Món đã ăn trong ngày</h4>
+                  {todayLog.length === 0 ? (
+                    <div className="bg-white border border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 text-sm">
+                      Chưa ghi món nào cho ngày này.
+                    </div>
                   ) : (
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                      item.type === 'Cheat' ? 'bg-amber-100 text-amber-700' :
-                      item.type === 'Half' ? 'bg-blue-100 text-blue-700' :
-                      'bg-emerald-100 text-emerald-700'
-                    }`}>
-                      {item.type === 'Cheat' ? 'Xả Nhẹ' : item.type === 'Half' ? 'Half-way' : 'Standard'}
-                    </span>
+                    <div className="space-y-2">
+                      {todayLog.map((e, i) => (
+                        <div key={i} className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+                          <div>
+                            <div className="text-sm text-slate-800">{e.name}</div>
+                            <div className="text-[10px] text-slate-500">{Math.round(e.kcal)} kcal · {e.p}P {e.c}C {e.f}F</div>
+                          </div>
+                          <button onClick={() => removeFoodFromLog(i)}
+                            className="text-rose-400 hover:text-rose-600 p-1" aria-label="Xóa">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
 
-                <div className="p-3 space-y-3 flex-1">
-                  {[['s', 'Sáng'], ['t', 'Trưa'], ['x', 'Xế'], ['to', 'Tối']].map(([key, label]) => (
-                    <div key={key} className="text-[11px]">
-                      <span className="font-bold text-slate-400 uppercase tracking-wider block text-[8px] mb-0.5">{label}</span>
-                      {isEditing && userRole === 'pt' ? (
-                        <textarea value={item[key]} rows={2} onChange={(e) => handleDietMealChange(dIdx, key, e.target.value)}
-                          className="w-full text-xs text-slate-700 border border-slate-200 p-1 rounded focus:outline-none focus:border-blue-500" />
-                      ) : (
-                        <p className="text-slate-700">{item[key]}</p>
-                      )}
+                {/* Thêm món */}
+                <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                  <h4 className="text-sm font-bold text-slate-700 mb-3">+ Thêm món</h4>
+
+                  {/* Search */}
+                  <div className="relative mb-3">
+                    <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" placeholder="Gõ tên món... (vd: gà, cơm, trà)" value={foodSearch}
+                      onChange={(e) => setFoodSearch(e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+                  </div>
+
+                  {/* Chips danh mục */}
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {cats.map(c => (
+                      <button key={c} onClick={() => setFoodCat(c)}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
+                          foodCat === c ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}>
+                        {c === 'all' ? 'Tất cả' : c}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Kết quả */}
+                  {foodsLoading ? (
+                    <div className="text-center py-6 text-slate-400 text-sm">Đang tải thư viện món...</div>
+                  ) : foods.length === 0 ? (
+                    <div className="text-center py-6 text-slate-400 text-sm">
+                      Chưa tải được thư viện món. Kiểm tra kết nối hoặc link Sheet.
                     </div>
-                  ))}
+                  ) : (
+                    <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                      {filtered.length === 0 ? (
+                        <div className="text-center py-6 text-slate-400 text-sm">Không tìm thấy món nào.</div>
+                      ) : filtered.map((f) => (
+                        <div key={f.id} className="flex items-center justify-between py-2">
+                          <div>
+                            <div className="text-sm text-slate-800">{f.name}</div>
+                            <div className="text-[10px] text-slate-500">{f.cat} · {f.kcal} kcal · {f.p}P {f.c}C {f.f}F</div>
+                          </div>
+                          <button onClick={() => addFoodToLog(f)}
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg p-1.5 transition-all" aria-label={`Thêm ${f.name}`}>
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-slate-400 mt-3">
+                    Số liệu tham khảo từ thư viện món (Google Sheet), mang tính tương đối.
+                  </p>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          );
+        })()}
 
       </main>
 
