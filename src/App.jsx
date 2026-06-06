@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { db, auth, googleProvider } from './firebase';
+import DebugPage from './DebugPage';
+import { logInfo, logWarn, logError, logSuccess, getSessionId, installGlobalErrorHandlers } from './logger';
 
 // ============================================================
 // DATA MẶC ĐỊNH
@@ -279,6 +281,11 @@ const updatePTClients = async (uid, clients) => {
 // COMPONENT CHÍNH
 // ============================================================
 export default function App() {
+  // Routing đơn giản: nếu URL là /debug hoặc ?debug=1 → hiện trang Debug
+  const isDebugRoute =
+    typeof window !== 'undefined' &&
+    (window.location.pathname === '/debug' || window.location.search.includes('debug=1'));
+
   // Auth state
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null); // 'pt' | 'client' | null
@@ -322,28 +329,49 @@ export default function App() {
   // AUTH: Lắng nghe trạng thái đăng nhập
   // ============================================================
   useEffect(() => {
+    installGlobalErrorHandlers();
+    logInfo('App khởi động', { route: window.location.pathname, session: getSessionId() });
+
     // Xử lý kết quả sau khi redirect về từ Google
-    getRedirectResult(auth).catch((err) => {
-      console.error('Lỗi redirect result:', err);
-    });
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          logSuccess('Redirect login thành công', { uid: result.user.uid, email: result.user.email });
+        }
+      })
+      .catch((err) => {
+        logError('Lỗi redirect result', { code: err.code, message: err.message });
+      });
 
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        logInfo('onAuthStateChanged: có user', { uid: firebaseUser.uid, email: firebaseUser.email });
         setUser(firebaseUser);
         // Check role trong Firestore
-        const ptData = await loadPTClients(firebaseUser.uid);
-        if (ptData && ptData.role === 'pt') {
-          setUserRole('pt');
-          const clients = ptData.assignedClients || [];
-          setPtClients(clients);
-          if (clients.length > 0) {
-            setSelectedClientId(clients[0].id);
+        try {
+          const ptData = await loadPTClients(firebaseUser.uid);
+          if (ptData && ptData.role === 'pt') {
+            logSuccess('Xác định role = PT', { clients: (ptData.assignedClients || []).length });
+            setUserRole('pt');
+            const clients = ptData.assignedClients || [];
+            setPtClients(clients);
+            if (clients.length > 0) {
+              setSelectedClientId(clients[0].id);
+            }
+          } else {
+            logWarn('User đăng nhập nhưng KHÔNG phải PT', {
+              uid: firebaseUser.uid,
+              docTồnTại: !!ptData,
+              roleĐọcĐược: ptData?.role || 'không có document',
+            });
+            setUserRole('unauthorized');
           }
-        } else {
-          // Google login nhưng không phải PT đã được phân quyền
+        } catch (err) {
+          logError('Lỗi đọc document users', { code: err.code, message: err.message });
           setUserRole('unauthorized');
         }
       } else {
+        logInfo('onAuthStateChanged: chưa có user (chưa đăng nhập)');
         setUser(null);
         setUserRole(null);
       }
@@ -370,17 +398,19 @@ export default function App() {
 
   const loadData = async (clientId) => {
     setDataLoading(true);
+    logInfo('Load dữ liệu client', { clientId });
     try {
       const data = await loadClientData(clientId);
       if (data) {
+        logSuccess('Đã load dữ liệu client', { clientId });
         applyData(data);
       } else {
-        // Client mới, tạo dữ liệu mặc định
+        logWarn('Client chưa có dữ liệu, tạo mặc định', { clientId });
         await saveClientData(clientId, DEFAULT_CLIENT_DATA);
         applyData(DEFAULT_CLIENT_DATA);
       }
     } catch (err) {
-      console.error('Lỗi load dữ liệu:', err);
+      logError('Lỗi load dữ liệu', { clientId, code: err.code, message: err.message });
     }
     setDataLoading(false);
   };
@@ -406,10 +436,11 @@ export default function App() {
     setSaveStatus('saving');
     try {
       await saveClientData(clientId, { profile, goals, issues, solutions, phases, diet, completedSessions });
+      logSuccess('Lưu lộ trình lên Cloud thành công', { clientId });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (err) {
-      console.error('Lỗi lưu:', err);
+      logError('Lỗi lưu lộ trình', { clientId, code: err.code, message: err.message });
       setSaveStatus('error');
     }
   };
@@ -465,20 +496,10 @@ export default function App() {
   // ============================================================
   const handleGoogleSignIn = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      logInfo('Bắt đầu đăng nhập Google (redirect)...');
+      await signInWithRedirect(auth, googleProvider);
     } catch (err) {
-      console.error('Popup lỗi, chuyển sang redirect:', err.code);
-      // Nếu popup bị chặn (COOP, popup blocker...) → dùng redirect
-      if (
-        err.code === 'auth/popup-blocked' ||
-        err.code === 'auth/popup-closed-by-user' ||
-        err.code === 'auth/cancelled-popup-request' ||
-        err.code === 'auth/internal-error'
-      ) {
-        await signInWithRedirect(auth, googleProvider);
-      } else {
-        console.error('Lỗi đăng nhập Google:', err);
-      }
+      logError('Lỗi đăng nhập Google', { code: err.code, message: err.message });
     }
   };
 
@@ -537,12 +558,13 @@ export default function App() {
       const updatedClients = [...ptClients, { id: code, name: newClientForm.name.trim() }];
       await updatePTClients(user.uid, updatedClients);
       setPtClients(updatedClients);
+      logSuccess('Tạo client mới thành công', { code, name: newClientForm.name.trim() });
 
       // Hiển thị code để PT copy
       setNewClientCode(code);
       setNewClientForm({ name: '', age: '', gender: 'Nam', height: '', weight: '', targetWeight: '' });
     } catch (err) {
-      console.error('Lỗi tạo client:', err);
+      logError('Lỗi tạo client', { code: err.code, message: err.message });
       setNewClientError('Có lỗi xảy ra. Thử lại sau.');
     }
     setCreatingClient(false);
@@ -602,6 +624,13 @@ export default function App() {
   const currentClientName = userRole === 'pt'
     ? (ptClients.find(c => c.id === selectedClientId)?.name || selectedClientId)
     : (profile?.name || clientAccessCode);
+
+  // ============================================================
+  // RENDER: Trang Debug (/debug)
+  // ============================================================
+  if (isDebugRoute) {
+    return <DebugPage />;
+  }
 
   // ============================================================
   // RENDER: Loading
@@ -694,14 +723,17 @@ export default function App() {
               )}
             </div>
           </div>
+
+          {/* Link debug */}
+          <p className="text-center mt-6">
+            <a href="/debug" className="text-[10px] text-slate-600 hover:text-slate-400 transition-colors">
+              🐞 Xem nhật ký hệ thống (debug)
+            </a>
+          </p>
         </div>
       </div>
     );
   }
-
-  // ============================================================
-  // RENDER: Loading dữ liệu client
-  // ============================================================
   if (dataLoading || !clientData && (userRole === 'pt' && selectedClientId)) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
