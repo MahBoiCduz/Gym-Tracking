@@ -760,7 +760,7 @@ export default function App() {
   // RENDER: Trang Debug (/debug)
   // ============================================================
   if (isDebugRoute) {
-    return <DebugPage />;
+    return <DebugPage user={user} authLoading={authLoading} onGoogleSignIn={handleGoogleSignIn} />;
   }
 
   // ============================================================
