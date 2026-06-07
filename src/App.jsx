@@ -693,6 +693,11 @@ export default function App() {
       setPtClients(updatedClients);
       logSuccess('Tạo client mới thành công', { code, name: newClientForm.name.trim() });
 
+      // Tự động chuyển sang client mới (dù PT đóng modal kiểu nào cũng đúng client)
+      setIsEditing(false);
+      setClientData(null);
+      setSelectedClientId(code);
+
       // Hiển thị code để PT copy
       setNewClientCode(code);
       setNewClientForm({ name: '', age: '', gender: 'Nam', height: '', weight: '', targetWeight: '' });
@@ -954,12 +959,7 @@ export default function App() {
                 📋 Copy mã
               </button>
               <button
-                onClick={() => {
-                  handleCloseNewClientModal();
-                  // Chuyển sang client vừa tạo
-                  const justCreated = ptClients[ptClients.length - 1];
-                  if (justCreated) setSelectedClientId(justCreated.id);
-                }}
+                onClick={handleCloseNewClientModal}
                 className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-sm transition-all"
               >
                 Xem lộ trình →
