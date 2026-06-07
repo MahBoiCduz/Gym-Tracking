@@ -1,7 +1,7 @@
 // src/DebugPage.jsx
 // Trang xem log từ xa: truy cập qua URL /debug hoặc ?debug=1
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchLogs, clearLogs, getSessionId } from './logger';
+import { fetchLogs, clearLogs, getSessionId, isLoggingEnabled, setLoggingEnabled } from './logger';
 
 const LEVEL_STYLES = {
   error:   { bg: 'bg-rose-950/40',    border: 'border-rose-800',    text: 'text-rose-300',    label: 'bg-rose-600' },
@@ -17,6 +17,13 @@ export default function DebugPage() {
   const [filter, setFilter] = useState('all'); // all | error | warn | info | success
   const [sessionFilter, setSessionFilter] = useState('');
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [loggingOn, setLoggingOn] = useState(isLoggingEnabled());
+
+  const toggleLogging = () => {
+    const next = !loggingOn;
+    setLoggingEnabled(next);
+    setLoggingOn(next);
+  };
 
   const loadLogs = useCallback(async () => {
     try {
@@ -76,6 +83,15 @@ export default function DebugPage() {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={toggleLogging}
+                className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${
+                  loggingOn ? 'bg-emerald-700 hover:bg-emerald-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                }`}
+                title="Bật/tắt ghi log lên Firestore"
+              >
+                {loggingOn ? '🟢 Đang ghi log' : '⚪ Đã tắt log'}
+              </button>
               <button
                 onClick={loadLogs}
                 className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs font-bold transition-colors"
