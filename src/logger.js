@@ -10,6 +10,29 @@ const SESSION_ID = Math.random().toString(36).slice(2, 8).toUpperCase();
 
 const LOGS_COLLECTION = 'debug_logs';
 
+// ============================================================
+// CÔNG TẮC GHI LOG
+// - Mặc định: bật (true). Đổi thành false để tắt hẳn từ code.
+// - Có thể bật/tắt ngay trên trang /debug mà không cần sửa code
+//   (lưu trong localStorage, ưu tiên hơn hằng số này).
+// ============================================================
+const LOGGING_DEFAULT = true;
+
+export const isLoggingEnabled = () => {
+  try {
+    const v = localStorage.getItem('debug_logging');
+    if (v === 'off') return false;
+    if (v === 'on') return true;
+  } catch (e) { /* localStorage không khả dụng */ }
+  return LOGGING_DEFAULT;
+};
+
+export const setLoggingEnabled = (enabled) => {
+  try {
+    localStorage.setItem('debug_logging', enabled ? 'on' : 'off');
+  } catch (e) { /* bỏ qua */ }
+};
+
 // Lấy thông tin môi trường gọn
 const getEnvInfo = () => ({
   url: typeof window !== 'undefined' ? window.location.href : '',
@@ -32,6 +55,9 @@ export const log = async (level, msg, data = null) => {
   if (level === 'error') console.error(tag, msg, data || '');
   else if (level === 'warn') console.warn(tag, msg, data || '');
   else console.log(tag, msg, data || '');
+
+  // Nếu tắt logging → không ghi lên Firestore (tiết kiệm quota)
+  if (!isLoggingEnabled()) return;
 
   // 2. Đẩy lên Firestore (không chặn luồng chính nếu lỗi)
   try {
