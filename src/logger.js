@@ -16,7 +16,7 @@ const LOGS_COLLECTION = 'debug_logs';
 // - Có thể bật/tắt ngay trên trang /debug mà không cần sửa code
 //   (lưu trong localStorage, ưu tiên hơn hằng số này).
 // ============================================================
-const LOGGING_DEFAULT = true;
+const LOGGING_DEFAULT = false;
 
 export const isLoggingEnabled = () => {
   try {
