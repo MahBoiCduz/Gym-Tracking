@@ -394,6 +394,9 @@ export default function App() {
   const [foodsLoading, setFoodsLoading] = useState(false);
   const [foodSearch, setFoodSearch] = useState('');
 
+  // Theo dõi trạng thái mạng
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
   // ============================================================
   // AUTH: Lắng nghe trạng thái đăng nhập
   // ============================================================
@@ -447,6 +450,20 @@ export default function App() {
       setAuthLoading(false);
     });
     return () => unsub();
+  }, []);
+
+  // ============================================================
+  // Theo dõi kết nối mạng
+  // ============================================================
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
   }, []);
 
   // ============================================================
@@ -1102,14 +1119,6 @@ export default function App() {
             {saveStatus === 'saved' && <span className="text-xs text-emerald-400">✓ Đã lưu</span>}
             {saveStatus === 'error' && <span className="text-xs text-rose-400">✗ Lỗi lưu</span>}
 
-            {/* In PDF */}
-            <button
-              onClick={() => window.print()}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-full text-[11px] font-bold text-slate-300 transition-all"
-            >
-              IN PDF
-            </button>
-
             {/* Đăng xuất (PT) hoặc Thoát (Client) */}
             <button
               onClick={userRole === 'pt' ? handleSignOut : () => { setUserRole(null); setClientAccessCode(''); setClientData(null); }}
@@ -1120,6 +1129,13 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* Banner cảnh báo mất mạng */}
+      {!isOnline && (
+        <div className="bg-rose-600 text-white text-center text-xs font-bold py-2 px-4 sticky top-0 z-50">
+          ⚠️ Mất kết nối mạng — các thay đổi có thể không được lưu. Vui lòng kiểm tra mạng.
+        </div>
+      )}
 
       {/* STATUS BAR */}
       <div className="max-w-6xl mx-auto px-4 mt-4">
