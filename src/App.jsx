@@ -182,13 +182,18 @@ const INITIAL_DIET = [
   { day: 15, type: "Half", s: "1 bát cháo đỗ xanh nấu loãng ăn kèm chút ruốc heo sạch.", t: "1 bát cơm trắng + 150g mực xào cần tỏi ít dầu + Canh cải ngọt.", x: "1 quả táo xanh.", to: "1 củ khoai lang + 150g phi lê cá lóc nướng + 1 đĩa rau muống luộc.", done: false }
 ];
 
+const BLANK_PROFILE = {
+  name: '', age: '', gender: 'Nam', height: '', weight: '',
+  targetWeight: '', bmr: 0, tdee: 0, activeFactor: 1.3
+};
+
 const DEFAULT_CLIENT_DATA = {
-  profile: INITIAL_PROFILE,
-  goals: INITIAL_GOALS,
-  issues: INITIAL_ISSUES,
-  solutions: INITIAL_SOLUTIONS,
-  phases: INITIAL_PHASES,
-  diet: INITIAL_DIET,
+  profile: BLANK_PROFILE,
+  goals: [],
+  issues: [],
+  solutions: [],
+  phases: [],
+  diet: [],
   completedSessions: {},
   nutritionTargets: { kcal: 1700, p: 130, c: 150, f: 50 },
   nutritionLog: {}
@@ -388,7 +393,6 @@ export default function App() {
   const [foods, setFoods] = useState([]); // thư viện món từ Google Sheet
   const [foodsLoading, setFoodsLoading] = useState(false);
   const [foodSearch, setFoodSearch] = useState('');
-  const [foodCat, setFoodCat] = useState('all');
 
   // ============================================================
   // AUTH: Lắng nghe trạng thái đăng nhập
@@ -1386,16 +1390,24 @@ export default function App() {
               <div key={phase.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                 <div className="bg-slate-900 text-white p-4">
                   {isEditing && userRole === 'pt' ? (
-                    <input type="text" value={phase.title}
-                      onChange={(e) => { const n = [...phases]; n[pIdx].title = e.target.value; setPhases(n); }}
-                      className="text-sm font-bold bg-transparent border-b border-blue-400 w-full focus:outline-none text-white" />
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <input type="text" value={phase.title} placeholder="Tên giai đoạn (Phase)..."
+                          onChange={(e) => { const n = [...phases]; n[pIdx].title = e.target.value; setPhases(n); }}
+                          className="text-sm font-bold bg-transparent border-b border-blue-400 w-full focus:outline-none text-white placeholder-slate-500" />
+                      </div>
+                      <button onClick={() => { if (window.confirm('Xóa cả giai đoạn này?')) { const n = phases.filter((_, i) => i !== pIdx); setPhases(n); } }}
+                        className="text-rose-400 hover:text-rose-300 text-[10px] font-bold border border-rose-800 rounded px-2 py-1 shrink-0">
+                        Xóa Phase
+                      </button>
+                    </div>
                   ) : (
                     <h3 className="text-sm font-bold">{phase.title}</h3>
                   )}
                   {isEditing && userRole === 'pt' ? (
-                    <textarea value={phase.desc} rows={2}
+                    <textarea value={phase.desc} rows={2} placeholder="Mô tả mục đích giai đoạn..."
                       onChange={(e) => { const n = [...phases]; n[pIdx].desc = e.target.value; setPhases(n); }}
-                      className="text-[11px] text-slate-300 bg-transparent border border-slate-700 rounded p-1 w-full mt-2 focus:outline-none" />
+                      className="text-[11px] text-slate-300 bg-transparent border border-slate-700 rounded p-1 w-full mt-2 focus:outline-none placeholder-slate-500" />
                   ) : (
                     <p className="text-[11px] text-slate-300 mt-1">{phase.desc}</p>
                   )}
@@ -1416,9 +1428,15 @@ export default function App() {
                           )}
                         </div>
                         {isEditing && userRole === 'pt' ? (
-                          <input type="text" value={block.sessions}
-                            onChange={(e) => { const n = [...phases]; n[pIdx].blocks[bIdx].sessions = e.target.value; setPhases(n); }}
-                            className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-bold border border-blue-200 text-right focus:outline-none" />
+                          <div className="flex items-center gap-2">
+                            <input type="text" value={block.sessions} placeholder="VD: Buổi 1-5"
+                              onChange={(e) => { const n = [...phases]; n[pIdx].blocks[bIdx].sessions = e.target.value; setPhases(n); }}
+                              className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-bold border border-blue-200 text-right focus:outline-none w-28" />
+                            <button onClick={() => { if (window.confirm('Xóa block này?')) { const n = [...phases]; n[pIdx].blocks = n[pIdx].blocks.filter((_, i) => i !== bIdx); setPhases(n); } }}
+                              className="text-rose-500 hover:text-rose-700 text-[10px] font-bold border border-rose-200 rounded px-2 py-0.5 shrink-0">
+                              Xóa Block
+                            </button>
+                          </div>
                         ) : (
                           <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-bold">{block.sessions}</span>
                         )}
@@ -1474,9 +1492,46 @@ export default function App() {
                       </div>
                     </div>
                   ))}
+
+                  {/* Nút thêm block */}
+                  {isEditing && userRole === 'pt' && (
+                    <div className="p-4">
+                      <button
+                        onClick={() => {
+                          const n = [...phases];
+                          n[pIdx].blocks.push({ name: 'Block mới', sessions: 'Buổi ...', target: '', exercises: [] });
+                          setPhases(n);
+                        }}
+                        className="w-full border-2 border-dashed border-blue-200 hover:border-blue-400 text-blue-600 rounded-lg py-2 text-xs font-bold transition-all"
+                      >
+                        + Thêm Block vào giai đoạn này
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
+
+            {/* Nút thêm phase + trạng thái rỗng */}
+            {isEditing && userRole === 'pt' && (
+              <button
+                onClick={() => {
+                  const newId = phases.length > 0 ? Math.max(...phases.map(p => p.id || 0)) + 1 : 1;
+                  setPhases([...phases, { id: newId, title: 'Giai đoạn mới', desc: '', blocks: [] }]);
+                }}
+                className="w-full border-2 border-dashed border-slate-300 hover:border-blue-400 text-slate-600 hover:text-blue-600 rounded-xl py-4 text-sm font-bold transition-all"
+              >
+                + Thêm Giai Đoạn (Phase) mới
+              </button>
+            )}
+
+            {phases.length === 0 && !(isEditing && userRole === 'pt') && (
+              <div className="bg-white border border-dashed border-slate-200 rounded-xl p-10 text-center">
+                <div className="text-3xl mb-3">🥊</div>
+                <p className="text-slate-500 text-sm">Chưa có lộ trình tập luyện.</p>
+                {userRole === 'pt' && <p className="text-slate-400 text-xs mt-1">Bấm "Chỉnh sửa" để thêm giai đoạn và bài tập.</p>}
+              </div>
+            )}
           </div>
         )}
 
@@ -1488,11 +1543,8 @@ export default function App() {
           const tot = todayLog.reduce((a, e) => ({
             kcal: a.kcal + (e.kcal || 0), p: a.p + (e.p || 0), c: a.c + (e.c || 0), f: a.f + (e.f || 0),
           }), { kcal: 0, p: 0, c: 0, f: 0 });
-          const cats = ['all', ...Array.from(new Set(foods.map(f => f.cat)))];
           const q = foodSearch.trim().toLowerCase();
-          const filtered = foods.filter(f =>
-            (foodCat === 'all' || f.cat === foodCat) && (!q || f.name.toLowerCase().includes(q))
-          );
+          const filtered = foods.filter(f => !q || f.name.toLowerCase().includes(q));
           const pct = (v, t) => t > 0 ? Math.min(100, Math.round((v / t) * 100)) : 0;
           const diffKcal = nutritionTargets.kcal - tot.kcal;
           const metric = (label, val, target, color, unit) => (
@@ -1591,18 +1643,6 @@ export default function App() {
                     <input type="text" placeholder="Gõ tên món... (vd: gà, cơm, trà)" value={foodSearch}
                       onChange={(e) => setFoodSearch(e.target.value)}
                       className="w-full border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
-                  </div>
-
-                  {/* Chips danh mục */}
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {cats.map(c => (
-                      <button key={c} onClick={() => setFoodCat(c)}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${
-                          foodCat === c ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}>
-                        {c === 'all' ? 'Tất cả' : c}
-                      </button>
-                    ))}
                   </div>
 
                   {/* Kết quả */}
