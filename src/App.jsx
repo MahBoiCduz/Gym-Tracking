@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth, googleProvider } from './firebase';
 import DebugPage from './DebugPage';
 import { logInfo, logWarn, logError, logSuccess, getSessionId, installGlobalErrorHandlers } from './logger';
@@ -394,6 +394,11 @@ export default function App() {
   const [foodsLoading, setFoodsLoading] = useState(false);
   const [foodSearch, setFoodSearch] = useState('');
 
+  // Modal góp ý món ăn
+  const [showSuggestModal, setShowSuggestModal] = useState(false);
+  const [suggestForm, setSuggestForm] = useState({ name: '', note: '' });
+  const [suggestStatus, setSuggestStatus] = useState('idle'); // idle | sending | sent | error
+
   // Theo dõi trạng thái mạng
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
@@ -578,6 +583,30 @@ export default function App() {
     const newLog = { ...nutritionLog, [selectedDate]: dayList };
     setNutritionLog(newLog);
     await saveClientData(clientId, { nutritionLog: newLog });
+  };
+
+  // ============================================================
+  // GÓP Ý MÓN ĂN
+  // ============================================================
+  const handleSubmitSuggestion = async () => {
+    if (!suggestForm.name.trim()) return;
+    setSuggestStatus('sending');
+    try {
+      const clientId = userRole === 'pt' ? selectedClientId : clientAccessCode;
+      await addDoc(collection(db, 'food_suggestions'), {
+        name: suggestForm.name.trim(),
+        note: suggestForm.note.trim(),
+        submittedBy: clientId || 'unknown',
+        submittedByRole: userRole,
+        createdAt: serverTimestamp(),
+      });
+      setSuggestStatus('sent');
+      setSuggestForm({ name: '', note: '' });
+      logInfo('Góp ý món ăn', { name: suggestForm.name.trim() });
+    } catch (err) {
+      logError('Lỗi gửi góp ý', { message: err.message });
+      setSuggestStatus('error');
+    }
   };
 
   // ============================================================
@@ -1691,6 +1720,14 @@ export default function App() {
                   <p className="text-[10px] text-slate-400 mt-3">
                     Số liệu tham khảo từ thư viện món (Google Sheet), mang tính tương đối.
                   </p>
+
+                  {/* Nút góp ý */}
+                  <button
+                    onClick={() => { setShowSuggestModal(true); setSuggestStatus('idle'); }}
+                    className="mt-3 w-full border border-dashed border-slate-300 hover:border-blue-400 text-slate-500 hover:text-blue-600 rounded-lg py-2 text-xs font-medium transition-all"
+                  >
+                    💡 Không tìm thấy món? Góp ý bổ sung
+                  </button>
                 </div>
               </div>
             </div>
@@ -1701,6 +1738,76 @@ export default function App() {
 
       {/* Modal tạo client mới */}
       {showNewClientModal && renderNewClientModal()}
+
+      {/* Modal góp ý món ăn */}
+      {showSuggestModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-800">💡 Góp ý món ăn</h2>
+              <button
+                onClick={() => { setShowSuggestModal(false); setSuggestStatus('idle'); setSuggestForm({ name: '', note: '' }); }}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 text-sm font-bold"
+              >✕</button>
+            </div>
+
+            {suggestStatus === 'sent' ? (
+              <div className="px-5 py-8 text-center">
+                <div className="text-4xl mb-3">🙏</div>
+                <p className="font-bold text-slate-800 mb-1">Cảm ơn bạn!</p>
+                <p className="text-slate-500 text-sm">Góp ý đã được ghi nhận. PT sẽ xem xét bổ sung sớm.</p>
+                <button
+                  onClick={() => { setShowSuggestModal(false); setSuggestStatus('idle'); setSuggestForm({ name: '', note: '' }); }}
+                  className="mt-5 w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-xl text-sm transition-all"
+                >
+                  Đóng
+                </button>
+              </div>
+            ) : (
+              <div className="px-5 py-5 space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                    Tên món <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: Bún bò Huế, Pizza Margherita..."
+                    value={suggestForm.name}
+                    onChange={(e) => setSuggestForm({ ...suggestForm, name: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                    Ghi chú thêm
+                  </label>
+                  <textarea
+                    placeholder="VD: Mua ở Highlands, loại nước uống có đường, size L..."
+                    value={suggestForm.note}
+                    onChange={(e) => setSuggestForm({ ...suggestForm, note: e.target.value })}
+                    rows={3}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 resize-none"
+                  />
+                </div>
+
+                {suggestStatus === 'error' && (
+                  <p className="text-rose-500 text-xs">Có lỗi xảy ra. Vui lòng thử lại.</p>
+                )}
+
+                <button
+                  onClick={handleSubmitSuggestion}
+                  disabled={!suggestForm.name.trim() || suggestStatus === 'sending'}
+                  className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+                >
+                  {suggestStatus === 'sending' ? (
+                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Đang gửi...</>
+                  ) : '✓ Gửi góp ý'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   );
