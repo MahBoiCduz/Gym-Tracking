@@ -472,6 +472,29 @@ export default function App() {
   }, []);
 
   // ============================================================
+  // Đóng modal bằng phím Escape (a11y)
+  // ============================================================
+  useEffect(() => {
+    if (!showNewClientModal && !showSuggestModal) return;
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (showNewClientModal) {
+        setShowNewClientModal(false);
+        setNewClientCode('');
+        setNewClientForm({ name: '', age: '', gender: 'Nam', height: '', weight: '', targetWeight: '' });
+        setNewClientError('');
+      }
+      if (showSuggestModal) {
+        setShowSuggestModal(false);
+        setSuggestStatus('idle');
+        setSuggestForm({ name: '', note: '' });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showNewClientModal, showSuggestModal]);
+
+  // ============================================================
   // Load thư viện món ăn từ Google Sheet (1 lần khi app mở)
   // ============================================================
   useEffect(() => {
@@ -842,7 +865,7 @@ export default function App() {
             {/* PT Login */}
             <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
               <h2 className="text-white font-bold text-sm mb-1 flex items-center gap-2">
-                <span className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center text-[10px]">PT</span>
+                <span className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center text-[11px]">PT</span>
                 Huấn Luyện Viên
               </h2>
               <p className="text-slate-400 text-xs mb-4">Đăng nhập bằng tài khoản Google được phân quyền</p>
@@ -886,7 +909,7 @@ export default function App() {
             {/* Client Access */}
             <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
               <h2 className="text-white font-bold text-sm mb-1 flex items-center gap-2">
-                <span className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-[10px]">HV</span>
+                <span className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-[11px]">HV</span>
                 Học Viên
               </h2>
               <p className="text-slate-400 text-xs mb-4">Nhập mã truy cập do PT cung cấp</p>
@@ -914,7 +937,7 @@ export default function App() {
 
           {/* Link debug */}
           <p className="text-center mt-6">
-            <a href="/debug" className="text-[10px] text-slate-600 hover:text-slate-400 transition-colors">
+            <a href="/debug" className="text-[11px] text-slate-600 hover:text-slate-400 transition-colors">
               🐞 Xem nhật ký hệ thống (debug)
             </a>
           </p>
@@ -962,12 +985,12 @@ export default function App() {
   // RENDER: Modal tạo client mới
   // ============================================================
   const renderNewClientModal = () => (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <div onClick={handleCloseNewClientModal} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-modal flex items-center justify-center p-4">
+      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="new-client-title" className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="text-base font-bold text-slate-800">Thêm Học Viên Mới</h2>
-          <button onClick={handleCloseNewClientModal} className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 text-sm font-bold transition-all">✕</button>
+          <h2 id="new-client-title" className="text-base font-bold text-slate-800">Thêm Học Viên Mới</h2>
+          <button onClick={handleCloseNewClientModal} aria-label="Đóng" className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 text-sm font-bold transition-all">✕</button>
         </div>
 
         {/* Nếu đã tạo xong → hiển thị mã truy cập */}
@@ -1002,13 +1025,14 @@ export default function App() {
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Tên học viên <span className="text-rose-500">*</span></label>
               <input
                 type="text"
+                autoFocus
                 placeholder="VD: Nguyễn Sỹ Đức"
                 value={newClientForm.name}
                 onChange={(e) => setNewClientForm({ ...newClientForm, name: e.target.value })}
                 className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
               />
               {newClientForm.name.trim() && (
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-slate-500 mt-1">
                   Mã dự kiến: <span className="font-mono font-bold text-blue-600">{buildBaseCode(newClientForm.name)}</span>
                 </p>
               )}
@@ -1081,7 +1105,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16">
 
       {/* HEADER */}
-      <header className="bg-slate-900 text-white shadow-md sticky top-0 z-40">
+      <header className="bg-slate-900 text-white shadow-md sticky top-0 z-sticky">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-1.5 bg-blue-600 rounded-lg">
@@ -1161,7 +1185,7 @@ export default function App() {
 
       {/* Banner cảnh báo mất mạng */}
       {!isOnline && (
-        <div className="bg-rose-600 text-white text-center text-xs font-bold py-2 px-4 sticky top-0 z-50">
+        <div className="bg-rose-600 text-white text-center text-xs font-bold py-2 px-4 sticky top-0 z-banner">
           ⚠️ Mất kết nối mạng — các thay đổi có thể không được lưu. Vui lòng kiểm tra mạng.
         </div>
       )}
@@ -1187,34 +1211,37 @@ export default function App() {
         )}
       </div>
 
-      {/* HERO BANNER */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white py-8 px-4 mt-4 mb-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/30 via-transparent to-transparent pointer-events-none" />
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+      {/* PROGRESS STRIP — flat, no gradient/glass (see DESIGN.md "The One Depth Rule") */}
+      <div className="bg-night-gym text-white py-6 px-4 mt-4 mb-8">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <span className="bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-drive-hover">
               Học viên: {currentClientName}
-            </span>
-            <h2 className="text-2xl font-extrabold mt-2 tracking-tight">TIẾN ĐỘ THỰC HIỆN MỤC TIÊU</h2>
+            </div>
+            <h2 className="text-2xl font-extrabold mt-1 tracking-tight text-balance">Tiến độ thực hiện mục tiêu</h2>
           </div>
 
-          <div className="flex gap-4 w-full md:w-auto">
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-3 flex-1 md:flex-none md:w-40 border border-white/10">
-              <div className="text-[10px] text-slate-300 font-medium">Hoàn thành Tập</div>
-              <div className="text-xl font-black text-blue-400 mt-0.5">{workoutProgressPercentage}%</div>
-              <div className="w-full bg-white/20 h-1.5 rounded-full mt-1.5 overflow-hidden">
-                <div className="bg-blue-400 h-full transition-all duration-500" style={{ width: `${workoutProgressPercentage}%` }} />
+          <div className="flex gap-3 w-full md:w-auto">
+            <div className="bg-pit-dark rounded-xl p-4 flex-1 md:w-44 border border-iron-mid">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs font-medium text-slate-300">Hoàn thành tập</span>
+                <span className="text-xl font-black text-drive-hover">{workoutProgressPercentage}%</span>
               </div>
-              <div className="text-[9px] text-slate-400 mt-1">{completedWorkoutsCount}/{totalWorkoutsCount} bài</div>
+              <div className="w-full bg-iron-mid h-1.5 rounded-full mt-2 overflow-hidden">
+                <div className="bg-drive h-full transition-all duration-500 motion-reduce:transition-none" style={{ width: `${workoutProgressPercentage}%` }} />
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1.5">{completedWorkoutsCount}/{totalWorkoutsCount} bài tập</div>
             </div>
 
-            <div className="bg-white/5 backdrop-blur-md rounded-xl p-3 flex-1 md:flex-none md:w-40 border border-white/10">
-              <div className="text-[10px] text-slate-300 font-medium">Calo hôm nay</div>
-              <div className="text-xl font-black text-emerald-400 mt-0.5">{mealProgressPercentage}%</div>
-              <div className="w-full bg-white/20 h-1.5 rounded-full mt-1.5 overflow-hidden">
-                <div className="bg-emerald-400 h-full transition-all duration-500" style={{ width: `${mealProgressPercentage}%` }} />
+            <div className="bg-pit-dark rounded-xl p-4 flex-1 md:w-44 border border-iron-mid">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs font-medium text-slate-300">Calo hôm nay</span>
+                <span className="text-xl font-black text-emerald-400">{mealProgressPercentage}%</span>
               </div>
-              <div className="text-[9px] text-slate-400 mt-1">{Math.round(todayNutrition.kcal)}/{nutritionTargets.kcal} kcal</div>
+              <div className="w-full bg-iron-mid h-1.5 rounded-full mt-2 overflow-hidden">
+                <div className="bg-coach h-full transition-all duration-500 motion-reduce:transition-none" style={{ width: `${mealProgressPercentage}%` }} />
+              </div>
+              <div className="text-[11px] text-slate-400 mt-1.5">{Math.round(todayNutrition.kcal)}/{nutritionTargets.kcal} kcal</div>
             </div>
           </div>
         </div>
@@ -1253,7 +1280,7 @@ export default function App() {
               {/* Họ tên */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Họ và Tên</span>
+                  <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">Họ và Tên</span>
                   {isEditing && userRole === 'pt' ? (
                     <input type="text" value={profile.name} onChange={(e) => handleProfileChange('name', e.target.value)}
                       className="text-sm font-bold text-slate-800 w-full mt-1 border-b border-blue-500 focus:outline-none" />
@@ -1275,7 +1302,7 @@ export default function App() {
               {/* Cân nặng / chiều cao */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Chiều cao / Nặng</span>
+                  <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">Chiều cao / Nặng</span>
                   <div className="flex items-baseline gap-1 mt-1">
                     {isEditing && userRole === 'pt' ? (
                       <div className="flex gap-1 items-center">
@@ -1305,7 +1332,7 @@ export default function App() {
               {/* BMI */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Chỉ số BMI</span>
+                  <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">Chỉ số BMI</span>
                   <div className="text-xl font-black text-amber-600 mt-1">{calculateBMI(profile.weight, profile.height)}</div>
                 </div>
                 <div className="mt-4 flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
@@ -1325,25 +1352,25 @@ export default function App() {
               {/* BMR */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">BMR cơ bản</span>
+                  <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">BMR cơ bản</span>
                   <div className="flex items-baseline gap-1 mt-1">
                     <span className="text-xl font-black text-blue-600">{profile.bmr}</span>
                     <span className="text-xs text-slate-500">kcal</span>
                   </div>
                 </div>
-                <div className="mt-4 text-[9px] text-slate-400 pt-2 border-t border-slate-100">Năng lượng thô tối thiểu</div>
+                <div className="mt-4 text-[11px] text-slate-500 pt-2 border-t border-slate-100">Năng lượng thô tối thiểu</div>
               </div>
 
               {/* TDEE */}
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">TDEE Tiêu thụ</span>
+                  <span className="text-[11px] uppercase font-bold text-slate-500 tracking-wider">TDEE Tiêu thụ</span>
                   <div className="flex items-baseline gap-1 mt-1">
                     <span className="text-xl font-black text-rose-500">{profile.tdee}</span>
                     <span className="text-xs text-slate-500">kcal</span>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between text-[9px] text-slate-400 pt-2 border-t border-slate-100">
+                <div className="mt-4 flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
                   <span>Hệ số vận động:</span>
                   <span className="font-bold text-slate-700">x1.3</span>
                 </div>
@@ -1354,7 +1381,7 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
                 <div className="mb-6">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">🎯 Mục Tiêu Khách Hàng</h4>
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">🎯 Mục Tiêu Khách Hàng</h4>
                   <ul className="space-y-3">
                     {goals.map((goal, idx) => (
                       <li key={idx} className="flex items-start gap-2.5">
@@ -1363,7 +1390,7 @@ export default function App() {
                           <div className="flex-1 flex gap-2">
                             <input type="text" value={goal} onChange={(e) => handleListChange(setGoals, goals, idx, e.target.value)}
                               className="flex-1 border-b border-slate-200 text-xs py-0.5 focus:border-blue-500 focus:outline-none" />
-                            <button onClick={() => setGoals(goals.filter((_, i) => i !== idx))} className="text-rose-500 text-[10px]">Xóa</button>
+                            <button onClick={() => setGoals(goals.filter((_, i) => i !== idx))} className="text-rose-500 text-[11px]">Xóa</button>
                           </div>
                         ) : (
                           <span className="text-xs text-slate-700">{goal}</span>
@@ -1372,12 +1399,12 @@ export default function App() {
                     ))}
                   </ul>
                   {isEditing && userRole === 'pt' && (
-                    <button onClick={() => setGoals([...goals, "Mục tiêu mới"])} className="mt-3 text-[10px] text-blue-600 font-bold">+ Thêm</button>
+                    <button onClick={() => setGoals([...goals, "Mục tiêu mới"])} className="mt-3 text-[11px] text-blue-600 font-bold">+ Thêm</button>
                   )}
                 </div>
 
                 <div className="pt-6 border-t border-slate-100">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">⚠️ Thể Trạng Hiện Tại (Yếu điểm)</h4>
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">⚠️ Thể Trạng Hiện Tại (Yếu điểm)</h4>
                   <ul className="space-y-3">
                     {issues.map((issue, idx) => (
                       <li key={idx} className="flex items-start gap-2.5">
@@ -1386,7 +1413,7 @@ export default function App() {
                           <div className="flex-1 flex gap-2">
                             <input type="text" value={issue} onChange={(e) => handleListChange(setIssues, issues, idx, e.target.value)}
                               className="flex-1 border-b border-slate-200 text-xs py-0.5 focus:border-blue-500 focus:outline-none" />
-                            <button onClick={() => setIssues(issues.filter((_, i) => i !== idx))} className="text-rose-500 text-[10px]">Xóa</button>
+                            <button onClick={() => setIssues(issues.filter((_, i) => i !== idx))} className="text-rose-500 text-[11px]">Xóa</button>
                           </div>
                         ) : (
                           <span className="text-xs text-slate-700">{issue}</span>
@@ -1395,22 +1422,22 @@ export default function App() {
                     ))}
                   </ul>
                   {isEditing && userRole === 'pt' && (
-                    <button onClick={() => setIssues([...issues, "Yếu điểm mới"])} className="mt-3 text-[10px] text-rose-600 font-bold">+ Thêm</button>
+                    <button onClick={() => setIssues([...issues, "Yếu điểm mới"])} className="mt-3 text-[11px] text-rose-600 font-bold">+ Thêm</button>
                   )}
                 </div>
               </div>
 
               <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">🛠️ Định Hướng Giải Quyết (HLV)</h4>
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">🛠️ Định Hướng Giải Quyết (HLV)</h4>
                 <ul className="space-y-3">
                   {solutions.map((sol, idx) => (
                     <li key={idx} className="flex items-start gap-3">
-                      <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">{idx + 1}</div>
+                      <div className="w-4 h-4 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">{idx + 1}</div>
                       {isEditing && userRole === 'pt' ? (
                         <div className="flex-1 flex gap-2">
                           <textarea value={sol} rows={2} onChange={(e) => handleListChange(setSolutions, solutions, idx, e.target.value)}
                             className="flex-1 border border-slate-200 text-xs p-1 rounded focus:border-blue-500 focus:outline-none" />
-                          <button onClick={() => setSolutions(solutions.filter((_, i) => i !== idx))} className="text-rose-500 text-[10px] h-fit">Xóa</button>
+                          <button onClick={() => setSolutions(solutions.filter((_, i) => i !== idx))} className="text-rose-500 text-[11px] h-fit">Xóa</button>
                         </div>
                       ) : (
                         <span className="text-xs text-slate-700 leading-relaxed">{sol}</span>
@@ -1419,7 +1446,7 @@ export default function App() {
                   ))}
                 </ul>
                 {isEditing && userRole === 'pt' && (
-                  <button onClick={() => setSolutions([...solutions, "Định hướng mới"])} className="mt-4 text-[10px] text-emerald-600 font-bold">+ Thêm</button>
+                  <button onClick={() => setSolutions([...solutions, "Định hướng mới"])} className="mt-4 text-[11px] text-emerald-600 font-bold">+ Thêm</button>
                 )}
               </div>
             </div>
@@ -1442,7 +1469,7 @@ export default function App() {
                           className="text-sm font-bold bg-transparent border-b border-blue-400 w-full focus:outline-none text-white placeholder-slate-500" />
                       </div>
                       <button onClick={() => { if (window.confirm('Xóa cả giai đoạn này?')) { const n = phases.filter((_, i) => i !== pIdx); setPhases(n); } }}
-                        className="text-rose-400 hover:text-rose-300 text-[10px] font-bold border border-rose-800 rounded px-2 py-1 shrink-0">
+                        className="text-rose-400 hover:text-rose-300 text-[11px] font-bold border border-rose-800 rounded px-2 py-1 shrink-0">
                         Xóa Phase
                       </button>
                     </div>
@@ -1476,18 +1503,18 @@ export default function App() {
                           <div className="flex items-center gap-2">
                             <input type="text" value={block.sessions} placeholder="VD: Buổi 1-5"
                               onChange={(e) => { const n = [...phases]; n[pIdx].blocks[bIdx].sessions = e.target.value; setPhases(n); }}
-                              className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-bold border border-blue-200 text-right focus:outline-none w-28" />
+                              className="text-[11px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-bold border border-blue-200 text-right focus:outline-none w-28" />
                             <button onClick={() => { if (window.confirm('Xóa block này?')) { const n = [...phases]; n[pIdx].blocks = n[pIdx].blocks.filter((_, i) => i !== bIdx); setPhases(n); } }}
-                              className="text-rose-500 hover:text-rose-700 text-[10px] font-bold border border-rose-200 rounded px-2 py-0.5 shrink-0">
+                              className="text-rose-500 hover:text-rose-700 text-[11px] font-bold border border-rose-200 rounded px-2 py-0.5 shrink-0">
                               Xóa Block
                             </button>
                           </div>
                         ) : (
-                          <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-bold">{block.sessions}</span>
+                          <span className="text-[11px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-bold">{block.sessions}</span>
                         )}
                       </div>
 
-                      <div className="bg-slate-50 border-l-4 border-blue-400 p-2.5 rounded-r mb-3">
+                      <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg mb-3">
                         {isEditing && userRole === 'pt' ? (
                           <textarea value={block.target} rows={2}
                             onChange={(e) => { const n = [...phases]; n[pIdx].blocks[bIdx].target = e.target.value; setPhases(n); }}
@@ -1505,7 +1532,7 @@ export default function App() {
                             <div key={eIdx} className={`flex items-start gap-2.5 p-2 rounded transition-all border ${
                               isDone ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-slate-100 hover:border-slate-200'
                             }`}>
-                              <button onClick={() => toggleSessionComplete(uniqueId)} className="mt-0.5 shrink-0">
+                              <button onClick={() => toggleSessionComplete(uniqueId)} role="checkbox" aria-checked={isDone} aria-label={ex} className="mt-0.5 shrink-0 p-2 -m-2">
                                 {isDone ? (
                                   <div className="w-4 h-4 bg-emerald-500 border border-emerald-500 rounded flex items-center justify-center">
                                     <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1532,7 +1559,7 @@ export default function App() {
                         })}
                         {isEditing && userRole === 'pt' && (
                           <button onClick={() => { const n = [...phases]; n[pIdx].blocks[bIdx].exercises.push("Bài tập mới"); setPhases(n); }}
-                            className="mt-1 text-[10px] text-blue-600 font-bold">+ Thêm bài tập</button>
+                            className="mt-1 text-[11px] text-blue-600 font-bold">+ Thêm bài tập</button>
                         )}
                       </div>
                     </div>
@@ -1574,7 +1601,7 @@ export default function App() {
               <div className="bg-white border border-dashed border-slate-200 rounded-xl p-10 text-center">
                 <div className="text-3xl mb-3">🥊</div>
                 <p className="text-slate-500 text-sm">Chưa có lộ trình tập luyện.</p>
-                {userRole === 'pt' && <p className="text-slate-400 text-xs mt-1">Bấm "Chỉnh sửa" để thêm giai đoạn và bài tập.</p>}
+                {userRole === 'pt' && <p className="text-slate-500 text-xs mt-1">Bấm "Chỉnh sửa" để thêm giai đoạn và bài tập.</p>}
               </div>
             )}
           </div>
@@ -1594,9 +1621,9 @@ export default function App() {
           const diffKcal = nutritionTargets.kcal - tot.kcal;
           const metric = (label, val, target, color, unit) => (
             <div className="bg-white rounded-xl border border-slate-200 p-3 text-center shadow-sm">
-              <div className="text-[10px] text-slate-500 font-medium">{label}</div>
+              <div className="text-[11px] text-slate-500 font-medium">{label}</div>
               <div className="text-lg font-black mt-0.5" style={{ color }}>{Math.round(val)}</div>
-              <div className="text-[9px] text-slate-400">/ {target}{unit}</div>
+              <div className="text-[11px] text-slate-500">/ {target}{unit}</div>
               <div className="w-full bg-slate-100 h-1.5 rounded-full mt-1.5 overflow-hidden">
                 <div className="h-full transition-all duration-500" style={{ width: `${pct(val, target)}%`, background: color }} />
               </div>
@@ -1612,19 +1639,19 @@ export default function App() {
                   <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
                     className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500" />
                   {selectedDate === new Date().toISOString().slice(0, 10) && (
-                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Hôm nay</span>
+                    <span className="text-[11px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Hôm nay</span>
                   )}
                 </div>
                 {/* PT đặt target */}
                 {isEditing && userRole === 'pt' && (
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-bold text-amber-600">Mục tiêu/ngày:</span>
+                    <span className="text-[11px] font-bold text-amber-600">Mục tiêu/ngày:</span>
                     {[['kcal', 'kcal'], ['p', 'P'], ['c', 'C'], ['f', 'F']].map(([k, lbl]) => (
                       <div key={k} className="flex items-center gap-0.5">
                         <input type="number" value={nutritionTargets[k]}
                           onChange={(e) => setNutritionTargets({ ...nutritionTargets, [k]: parseFloat(e.target.value) || 0 })}
                           className="w-14 text-xs border border-amber-300 rounded px-1 py-0.5 text-right focus:outline-none" />
-                        <span className="text-[9px] text-slate-500">{lbl}</span>
+                        <span className="text-[11px] text-slate-500">{lbl}</span>
                       </div>
                     ))}
                   </div>
@@ -1632,11 +1659,11 @@ export default function App() {
               </div>
 
               {/* Metric cards */}
-              <div className="grid grid-cols-4 gap-3">
-                {metric('Calo', tot.kcal, nutritionTargets.kcal, '#378ADD', '')}
-                {metric('Đạm', tot.p, nutritionTargets.p, '#1D9E75', 'g')}
-                {metric('Carb', tot.c, nutritionTargets.c, '#EF9F27', 'g')}
-                {metric('Mỡ', tot.f, nutritionTargets.f, '#D85A30', 'g')}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {metric('Calo', tot.kcal, nutritionTargets.kcal, '#2563eb', '')}
+                {metric('Đạm', tot.p, nutritionTargets.p, '#059669', 'g')}
+                {metric('Carb', tot.c, nutritionTargets.c, '#d97706', 'g')}
+                {metric('Mỡ', tot.f, nutritionTargets.f, '#e11d48', 'g')}
               </div>
 
               {/* Dòng thiếu/thừa */}
@@ -1651,9 +1678,9 @@ export default function App() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {/* Món đã ăn */}
                 <div>
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Món đã ăn trong ngày</h4>
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Món đã ăn trong ngày</h4>
                   {todayLog.length === 0 ? (
-                    <div className="bg-white border border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 text-sm">
+                    <div className="bg-white border border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-500 text-sm">
                       Chưa ghi món nào cho ngày này.
                     </div>
                   ) : (
@@ -1662,7 +1689,7 @@ export default function App() {
                         <div key={i} className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
                           <div>
                             <div className="text-sm text-slate-800">{e.name}</div>
-                            <div className="text-[10px] text-slate-500">{Math.round(e.kcal)} kcal · {e.p}P {e.c}C {e.f}F</div>
+                            <div className="text-[11px] text-slate-500">{Math.round(e.kcal)} kcal · {e.p}P {e.c}C {e.f}F</div>
                           </div>
                           <button onClick={() => removeFoodFromLog(i)}
                             className="text-rose-400 hover:text-rose-600 p-1" aria-label="Xóa">
@@ -1692,20 +1719,20 @@ export default function App() {
 
                   {/* Kết quả */}
                   {foodsLoading ? (
-                    <div className="text-center py-6 text-slate-400 text-sm">Đang tải thư viện món...</div>
+                    <div className="text-center py-6 text-slate-500 text-sm">Đang tải thư viện món...</div>
                   ) : foods.length === 0 ? (
-                    <div className="text-center py-6 text-slate-400 text-sm">
+                    <div className="text-center py-6 text-slate-500 text-sm">
                       Chưa tải được thư viện món. Kiểm tra kết nối hoặc link Sheet.
                     </div>
                   ) : (
                     <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
                       {filtered.length === 0 ? (
-                        <div className="text-center py-6 text-slate-400 text-sm">Không tìm thấy món nào.</div>
+                        <div className="text-center py-6 text-slate-500 text-sm">Không tìm thấy món nào.</div>
                       ) : filtered.map((f) => (
                         <div key={f.id} className="flex items-center justify-between py-2">
                           <div>
                             <div className="text-sm text-slate-800">{f.name}</div>
-                            <div className="text-[10px] text-slate-500">{f.cat} · {f.kcal} kcal · {f.p}P {f.c}C {f.f}F</div>
+                            <div className="text-[11px] text-slate-500">{f.cat} · {f.kcal} kcal · {f.p}P {f.c}C {f.f}F</div>
                           </div>
                           <button onClick={() => addFoodToLog(f)}
                             className="bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg p-1.5 transition-all" aria-label={`Thêm ${f.name}`}>
@@ -1717,7 +1744,7 @@ export default function App() {
                       ))}
                     </div>
                   )}
-                  <p className="text-[10px] text-slate-400 mt-3">
+                  <p className="text-[11px] text-slate-500 mt-3">
                     Số liệu tham khảo từ thư viện món (Google Sheet), mang tính tương đối.
                   </p>
 
@@ -1741,13 +1768,14 @@ export default function App() {
 
       {/* Modal góp ý món ăn */}
       {showSuggestModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+        <div onClick={() => { setShowSuggestModal(false); setSuggestStatus('idle'); setSuggestForm({ name: '', note: '' }); }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-modal flex items-center justify-center p-4">
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="suggest-title" className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <h2 className="text-sm font-bold text-slate-800">💡 Góp ý món ăn</h2>
+              <h2 id="suggest-title" className="text-sm font-bold text-slate-800">💡 Góp ý món ăn</h2>
               <button
                 onClick={() => { setShowSuggestModal(false); setSuggestStatus('idle'); setSuggestForm({ name: '', note: '' }); }}
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 text-sm font-bold"
+                aria-label="Đóng"
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 text-sm font-bold"
               >✕</button>
             </div>
 

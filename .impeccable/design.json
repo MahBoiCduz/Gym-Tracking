@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-17T00:00:00Z",
+  "title": "Design System: Kickboxing Tracker",
+  "extensions": {
+    "colorMeta": {
+      "night-gym":           { "role": "neutral",   "displayName": "Night Gym",          "canonical": "#0f172a", "tonalRamp": ["#020408", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#e2e8f0"] },
+      "pit-dark":            { "role": "neutral",   "displayName": "Pit Dark",           "canonical": "#1e293b", "tonalRamp": ["#020408", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#e2e8f0"] },
+      "iron-mid":            { "role": "neutral",   "displayName": "Iron Mid",           "canonical": "#334155", "tonalRamp": ["#020408", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#e2e8f0"] },
+      "muted-text":          { "role": "neutral",   "displayName": "Muted Text",         "canonical": "#94a3b8", "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#f8fafc"] },
+      "soft-text":           { "role": "neutral",   "displayName": "Soft Text",          "canonical": "#64748b", "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#f8fafc"] },
+      "slate-border":        { "role": "neutral",   "displayName": "Slate Border",       "canonical": "#e2e8f0", "tonalRamp": ["#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#f8fafc"] },
+      "body-bg":             { "role": "neutral",   "displayName": "Body BG",            "canonical": "#f8fafc", "tonalRamp": ["#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#f8fafc"] },
+      "surface":             { "role": "neutral",   "displayName": "Surface",            "canonical": "#ffffff", "tonalRamp": ["#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#ffffff"] },
+      "drive-blue":          { "role": "primary",   "displayName": "Drive Blue",         "canonical": "#2563eb", "tonalRamp": ["#1e3a8a", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe", "#eff6ff"] },
+      "drive-blue-hover":    { "role": "primary",   "displayName": "Drive Blue Hover",   "canonical": "#3b82f6", "tonalRamp": ["#1e3a8a", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe", "#eff6ff"] },
+      "drive-blue-subtle":   { "role": "primary",   "displayName": "Drive Blue Subtle",  "canonical": "#eff6ff", "tonalRamp": ["#1e3a8a", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe", "#eff6ff"] },
+      "coach-green":         { "role": "secondary", "displayName": "Coach Green",        "canonical": "#059669", "tonalRamp": ["#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7", "#ecfdf5"] },
+      "coach-green-subtle":  { "role": "secondary", "displayName": "Coach Green Subtle", "canonical": "#ecfdf5", "tonalRamp": ["#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7", "#ecfdf5"] },
+      "warning-amber":       { "role": "tertiary",  "displayName": "Warning Amber",      "canonical": "#d97706", "tonalRamp": ["#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fbbf24", "#fde68a", "#fffbeb"] },
+      "alert-red":           { "role": "tertiary",  "displayName": "Alert Red",          "canonical": "#f43f5e", "tonalRamp": ["#881337", "#9f1239", "#be123c", "#e11d48", "#f43f5e", "#fb7185", "#fda4af", "#fff1f2"] }
+    },
+    "typographyMeta": {
+      "display":  { "displayName": "Display",  "purpose": "App name, login headline, major modal headline. One per view maximum." },
+      "headline": { "displayName": "Headline", "purpose": "Section headings, phase/block titles inside dark headers." },
+      "title":    { "displayName": "Title",    "purpose": "Card section labels, modal sub-headers, client name." },
+      "body":     { "displayName": "Body",     "purpose": "Exercise descriptions, diet entries, goal/solution text. 12px minimum." },
+      "label":    { "displayName": "Label",    "purpose": "Metric names, status chip text, tab badges. 11px / uppercase tracked." }
+    },
+    "shadows": [
+      { "name": "card-lift",   "value": "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1)", "purpose": "White cards sitting on Body BG canvas. The only shadow used in the main content area." },
+      { "name": "modal-float", "value": "0 25px 50px -12px rgba(0,0,0,0.25)",                             "purpose": "Modals and dialogs. Reserved for screen-breaking overlay layers only." }
+    ],
+    "motion": [
+      { "name": "state-transition", "value": "150ms ease-out",                              "purpose": "Button hover, input focus border, tab indicator. Default state-change speed." },
+      { "name": "progress-fill",    "value": "500ms ease-out",                              "purpose": "Progress bar fill transitions." },
+      { "name": "spinner",          "value": "animation: spin 1s linear infinite",          "purpose": "Loading spinners. Static fallback required under prefers-reduced-motion." },
+      { "name": "ping-dot",         "value": "animation: ping 1s cubic-bezier(0,0,0.2,1) infinite", "purpose": "PT mode live indicator dot. Static dot fallback under prefers-reduced-motion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px",  "purpose": "Metric card grid: 2-col → 3-col → 5-col" },
+      { "name": "md", "value": "768px",  "purpose": "Header layout: stacked → row. Content grids: 1-col → 2-col" },
+      { "name": "lg", "value": "1024px", "purpose": "Max content width: max-w-6xl (72rem)" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "PT's primary action: Save, Create Client, Submit. Drive Blue, medium weight.",
+      "html": "<button class=\"ds-btn-primary\">Tạo học viên</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: #2563eb; color: #ffffff; font-size: 0.75rem; font-weight: 700; font-family: system-ui, -apple-system, sans-serif; padding: 6px 16px; border: none; border-radius: 12px; cursor: pointer; transition: background 150ms ease-out; } .ds-btn-primary:hover { background: #3b82f6; } .ds-btn-primary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Sign Out, Cancel, Exit. Dark pill shape. Hover shifts to danger-tint for destructive ghosts.",
+      "html": "<button class=\"ds-btn-ghost\">Đăng xuất</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; background: #1e293b; color: #94a3b8; font-size: 0.6875rem; font-weight: 400; font-family: system-ui, -apple-system, sans-serif; padding: 6px 12px; border: 1px solid #334155; border-radius: 9999px; cursor: pointer; transition: background 150ms ease-out, color 150ms ease-out; } .ds-btn-ghost:hover { background: #7f1d1d; color: #fca5a5; border-color: #7f1d1d; } .ds-btn-ghost:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Session range tags, role identifiers. Blue Subtle on Drive Blue.",
+      "html": "<span class=\"ds-chip\">Buổi 1 - 5</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; background: #eff6ff; color: #2563eb; font-size: 0.625rem; font-weight: 700; font-family: system-ui, -apple-system, sans-serif; padding: 2px 8px; border-radius: 9999px; letter-spacing: 0.01em; }"
+    },
+    {
+      "name": "PT Mode Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Coach Green variant. Signals PT identity or completion states.",
+      "html": "<span class=\"ds-chip-pt\"><span class=\"ds-chip-pt-dot\"></span>PT</span>",
+      "css": ".ds-chip-pt { display: inline-flex; align-items: center; gap: 4px; background: #ecfdf5; color: #059669; font-size: 0.625rem; font-weight: 700; font-family: system-ui, -apple-system, sans-serif; padding: 2px 8px 2px 6px; border-radius: 9999px; } .ds-chip-pt-dot { width: 6px; height: 6px; border-radius: 50%; background: #059669; flex-shrink: 0; }"
+    },
+    {
+      "name": "Metric Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "5-across body metric grid: BMI, BMR, TDEE, weight, height. Compact 16px padding.",
+      "html": "<div class=\"ds-metric-card\"><span class=\"ds-metric-label\">TDEE Tiêu thụ</span><div class=\"ds-metric-value\" style=\"color:#f43f5e\">2208 <span class=\"ds-metric-unit\">kcal</span></div><div class=\"ds-metric-footer\">Hệ số vận động: <strong>x1.3</strong></div></div>",
+      "css": ".ds-metric-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1); font-family: system-ui, -apple-system, sans-serif; min-height: 100px; } .ds-metric-label { font-size: 0.5625rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; } .ds-metric-value { font-size: 1.25rem; font-weight: 900; margin-top: 4px; line-height: 1; } .ds-metric-unit { font-size: 0.75rem; font-weight: 400; color: #64748b; } .ds-metric-footer { font-size: 0.6875rem; color: #64748b; border-top: 1px solid #f1f5f9; padding-top: 8px; margin-top: 12px; }"
+    },
+    {
+      "name": "Content Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Standard content card for Goals, Issues, Solutions, and nutrition sections.",
+      "html": "<div class=\"ds-content-card\"><h4 class=\"ds-content-card-label\">🎯 Mục Tiêu Khách Hàng</h4><p class=\"ds-content-card-body\">Cải thiện sức khỏe chung toàn diện</p></div>",
+      "css": ".ds-content-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1); font-family: system-ui, -apple-system, sans-serif; } .ds-content-card-label { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 12px 0; } .ds-content-card-body { font-size: 0.75rem; color: #1e293b; line-height: 1.6; margin: 0; }"
+    },
+    {
+      "name": "Phase Block Header",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Dark full-bleed header inside workout phase cards. Night Gym with white text.",
+      "html": "<div class=\"ds-phase-header\"><h3 class=\"ds-phase-title\">PHASE 1: Làm Quen Kỹ Thuật Cơ Bản</h3><p class=\"ds-phase-desc\">Mục đích: Cải thiện tư thế Kickboxing và tăng độ linh hoạt.</p></div>",
+      "css": ".ds-phase-header { background: #0f172a; color: #ffffff; padding: 16px; border-radius: 12px 12px 0 0; font-family: system-ui, -apple-system, sans-serif; } .ds-phase-title { font-size: 0.875rem; font-weight: 700; margin: 0; line-height: 1.3; } .ds-phase-desc { font-size: 0.6875rem; color: #cbd5e1; margin: 4px 0 0 0; line-height: 1.5; }"
+    },
+    {
+      "name": "Input Field (Dark)",
+      "kind": "input",
+      "refersTo": "input-dark",
+      "description": "Login and header-area inputs. Pit Dark background, focus on Drive Blue border.",
+      "html": "<input class=\"ds-input-dark\" type=\"text\" placeholder=\"VD: anh-duc\" />",
+      "css": ".ds-input-dark { background: #1e293b; border: 1px solid #334155; color: #ffffff; font-size: 0.875rem; font-family: system-ui, -apple-system, sans-serif; padding: 10px 12px; border-radius: 12px; width: 100%; box-sizing: border-box; outline: none; transition: border-color 150ms ease-out; } .ds-input-dark::placeholder { color: #64748b; } .ds-input-dark:focus { border-color: #2563eb; }"
+    },
+    {
+      "name": "Input Field (Light)",
+      "kind": "input",
+      "refersTo": "input-light",
+      "description": "Modal form inputs. White background, blue focus ring.",
+      "html": "<input class=\"ds-input-light\" type=\"text\" placeholder=\"VD: Nguyễn Sỹ Đức\" />",
+      "css": ".ds-input-light { background: #ffffff; border: 1px solid #e2e8f0; color: #0f172a; font-size: 0.875rem; font-family: system-ui, -apple-system, sans-serif; padding: 10px 12px; border-radius: 12px; width: 100%; box-sizing: border-box; outline: none; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; } .ds-input-light::placeholder { color: #94a3b8; } .ds-input-light:focus { border-color: #2563eb; box-shadow: 0 0 0 1px #bfdbfe; }"
+    },
+    {
+      "name": "Progress Bar",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Session completion and calorie progress. Flat track, blue or green fill.",
+      "html": "<div class=\"ds-progress-wrap\"><div class=\"ds-progress-label\">Hoàn thành Tập</div><div class=\"ds-progress-value\" style=\"color:#3b82f6\">68%</div><div class=\"ds-progress-track\"><div class=\"ds-progress-fill\" style=\"width:68%;background:#2563eb\"></div></div><div class=\"ds-progress-sub\">34/50 bài</div></div>",
+      "css": ".ds-progress-wrap { font-family: system-ui, -apple-system, sans-serif; } .ds-progress-label { font-size: 0.625rem; color: #cbd5e1; font-weight: 500; } .ds-progress-value { font-size: 1.25rem; font-weight: 900; margin: 2px 0; } .ds-progress-track { width: 100%; background: rgba(255,255,255,0.2); height: 6px; border-radius: 9999px; overflow: hidden; margin-top: 6px; } .ds-progress-fill { height: 100%; border-radius: 9999px; transition: width 500ms ease-out; } .ds-progress-sub { font-size: 0.5625rem; color: #94a3b8; margin-top: 4px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Coaching Session",
+    "overview": "This is a tool that feels like a great PT standing next to you — demanding, invested, and clear. Every screen has a job. The header doesn't decorate; it commands. The data doesn't report; it judges your progress. The session checklist isn't a form; it's a ledger of earned effort. The atmosphere is that of a well-run training session: high energy where the action is, focused quiet where concentration is required.\n\nThe palette runs on a Discipline & Drive axis. The dark slate (Night Gym) is the discipline — controlled, structured, imposing without trying to impress. The electric blue (Drive Blue) is the effort — the push, the CTA, the thing you're building toward. Emerald green lands only when the PT is in control or when something has been successfully completed.\n\nThis system explicitly rejects: the blue-gradient dashboard template of generic fitness SaaS; the neon-on-black gamer aesthetic; and the mint-green softness of corporate wellness portals.",
+    "keyCharacteristics": [
+      "Dark-header / light-body split: two distinct layers signaling two distinct modes",
+      "Role-coded color: blue = action/client, green = PT mode/success, amber = warning, red = danger",
+      "Tactile, structural components: borders feel load-bearing, not decorative",
+      "Body text at 12px minimum — no 9px or 10px UI elements",
+      "Vietnamese diacritic support throughout; system font stack handles the full set"
+    ],
+    "rules": [
+      { "name": "The Signal Rule",       "body": "Each accent color has one functional meaning. Blue = action or client identity. Green = PT control or completion. Amber = attention. Red = danger. A color used outside its signal role is a bug, not a design choice.",          "section": "colors" },
+      { "name": "The No-Decoration Rule", "body": "No accent color is used for visual interest alone. No gradient fills. No colored card backgrounds. No colored section borders unless they carry the Signal Rule meaning.",                                               "section": "colors" },
+      { "name": "The 12px Floor Rule",    "body": "No meaningful content renders below 12px (0.75rem). Replace text-[9px] and text-[10px] utilities with Label (11px) or Body (12px).",                                                                              "section": "typography" },
+      { "name": "The Weight Hierarchy Rule", "body": "Hierarchy is created by weight, not size alone. Don't reach for a smaller size to signal secondary importance when reducing weight achieves the same result with better legibility.",                             "section": "typography" },
+      { "name": "The One Depth Rule",     "body": "The interface has two elevation planes: the flat canvas (header + body-bg) and the surface layer (white cards). That is the entire stack outside of modals. No intermediate shadow levels or layered card-in-card layouts.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use Drive Blue (#2563eb) exclusively for action-bearing elements: primary buttons, active tab borders, focused inputs.",
+      "Do maintain the Night Gym / white surface split as the primary depth signal.",
+      "Do keep body text at 0.75rem (12px) minimum.",
+      "Do verify body text contrast at ≥4.5:1. On white Surface, use Soft Text (#64748b) not Muted Text (#94a3b8).",
+      "Do use Coach Green (#059669) to signal PT control and completion states only.",
+      "Do support full Vietnamese diacritics throughout.",
+      "Do honor prefers-reduced-motion — all animated elements need static fallbacks."
+    ],
+    "donts": [
+      "Don't use border-left or border-right greater than 1px as a colored accent stripe on cards or callout boxes.",
+      "Don't build the generic fitness SaaS template: blue-gradient hero, dashboard widget grid, MyFitnessPal-style pastel charts.",
+      "Don't use a gamer/esports dark UI: neon accents, glitch effects, aggressive decorative typefaces.",
+      "Don't use the corporate wellness aesthetic: mint green, soft rounded-2xl everything, pastel gradient backgrounds.",
+      "Don't use gradient text (background-clip: text with a gradient).",
+      "Don't render any content below 12px — no text-[9px] or text-[10px] in production.",
+      "Don't add emerald/green to client-facing views for decorative purposes.",
+      "Don't use background colors for cards other than Surface white."
+    ]
+  }
+}
